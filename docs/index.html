@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LayoutFixer — Fix mistyped Hebrew/English text in one keystroke</title>
+  <meta name="description" content="Typed in the wrong layout again? LayoutFixer converts your text and switches keyboard layout automatically. Free, no admin required." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d14;
+      --surface: #13131f;
+      --border: #1e1e2e;
+      --accent: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.35);
+      --accent-dim: rgba(59, 130, 246, 0.12);
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 56px;
+      background: rgba(13, 13, 20, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-logo span { color: var(--accent); }
+
+    .nav-link {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: color 0.15s;
+    }
+
+    .nav-link:hover { color: var(--text); }
+
+    /* ── HERO ── */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 7rem 1.5rem 5rem;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.3rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      background: var(--accent-dim);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    h1 {
+      font-size: clamp(2.2rem, 6vw, 3.6rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      color: #f1f5f9;
+    }
+
+    h1 .accent { color: var(--accent); }
+
+    .subheadline {
+      font-size: clamp(1rem, 2.5vw, 1.15rem);
+      color: var(--text-dim);
+      max-width: 600px;
+      margin-bottom: 2.5rem;
+      line-height: 1.7;
+    }
+
+    .subheadline .hebrew {
+      font-family: "Arial Hebrew", "David", serif;
+      direction: rtl;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .cta-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.85rem 2.2rem;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 700;
+      text-decoration: none;
+      letter-spacing: -0.01em;
+      box-shadow: 0 0 28px var(--accent-glow), 0 4px 16px rgba(0,0,0,0.4);
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+      box-shadow: 0 0 40px var(--accent-glow), 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .btn-primary svg { flex-shrink: 0; }
+
+    .cta-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* ── SECTION COMMON ── */
+    section {
+      padding: 5rem 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+      text-align: center;
+    }
+
+    .section-title {
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      text-align: center;
+      color: #f1f5f9;
+      margin-bottom: 3.5rem;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── HOW IT WORKS ── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 2rem 1.5rem;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+
+    .step:hover { border-color: rgba(59, 130, 246, 0.4); }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+    }
+
+    .step h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 0.4rem;
+    }
+
+    .step p {
+      font-size: 0.88rem;
+      color: var(--text-dim);
+      line-height: 1.55;
+    }
+
+    .step .kbd {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 5px;
+      background: #1e1e2e;
+      border: 1px solid #2d2d44;
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 0.85em;
+      color: var(--accent);
+    }
+
+    /* ── FEATURES ── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      transition: border-color 0.2s;
+    }
+
+    .feature:hover { border-color: rgba(59, 130, 246, 0.3); }
+
+    .feature-icon {
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .feature h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .feature p {
+      font-size: 0.83rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .footer-left {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .footer-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      transition: color 0.15s;
+    }
+
+    .footer-link:hover { color: var(--text-dim); }
+
+    .footer-privacy {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    /* ── GLOW BG ── */
+    .hero-glow {
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 500px;
+      background: radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    @media (max-width: 600px) {
+      nav { padding: 0 1rem; }
+      .hero { padding: 5rem 1.25rem 3.5rem; }
+      footer { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero-glow" aria-hidden="true"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">Layout<span>Fixer</span></a>
+  <a href="https://github.com/your-username/layoutfixer" class="nav-link" target="_blank" rel="noopener">GitHub →</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="badge">
+    <span class="badge-dot"></span>
+    Free &nbsp;·&nbsp; Windows &nbsp;·&nbsp; No admin needed
+  </div>
+
+  <h1>You typed in <span class="accent">Hebrew</span> again,<br>didn't you.</h1>
+
+  <p class="subheadline">
+    You were mid-sentence, switched windows, totally forgot your layout was still Hebrew,
+    typed a full paragraph of complete gibberish — and now you're staring at
+    <span class="hebrew">שדגכעיחלך</span> wondering why life is like this.
+    We've all been there. LayoutFixer fixes it in one keystroke.
+  </p>
+
+  <div class="cta-group">
+    <a href="https://github.com/your-username/layoutfixer/releases/latest" class="btn-primary" target="_blank" rel="noopener">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download for Windows — Free
+    </a>
+    <span class="cta-meta">v1.0.0 &nbsp;·&nbsp; No admin required &nbsp;·&nbsp; 14 MB</span>
+  </div>
+</div>
+
+<hr class="divider" style="max-width:900px; margin:0 auto;" />
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <p class="section-label">How it works</p>
+  <h2 class="section-title">Three steps. One second.</h2>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-number">1</div>
+      <h3>Select the wrong text</h3>
+      <p>Highlight the gibberish you just typed — whether it's a word, a sentence, or a whole paragraph.</p>
+    </div>
+    <div class="step">
+      <div class="step-number">2</div>
+      <h3>Press <span class="kbd">Ctrl+Alt+Z</span></h3>
+      <p>LayoutFixer intercepts the hotkey, converts the characters, and pastes the fixed text back instantly.</p>
+    </div>
+    <div class="step">
+      <div class="step-number">3</div>
+      <h3>Done — layout switches too</h3>
+      <p>Your keyboard layout flips automatically so the next thing you type comes out correct. No fumbling.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" style="max-width:900px; margin:0 auto;" />
+
+<!-- FEATURES -->
+<section id="features">
+  <p class="section-label">Features</p>
+  <h2 class="section-title">Everything you need. Nothing you don't.</h2>
+
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">🖥️</div>
+      <h3>Works in any app</h3>
+      <p>Browser, Word, Slack, Notepad, your IDE — if Windows sees it, LayoutFixer works in it.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">📋</div>
+      <h3>Clipboard always restored</h3>
+      <p>LayoutFixer borrows your clipboard for a split second, then puts it back exactly as it found it.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔇</div>
+      <h3>Silent tray app</h3>
+      <p>Runs quietly in the system tray. Right-click for settings. Never gets in your way.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🆓</div>
+      <h3>Free forever</h3>
+      <p>No license key, no trial period, no "Pro" tier. Open source and free to use commercially.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" style="max-width:900px; margin:0 auto;" />
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-left">© 2026 LayoutFixer</span>
+  <div class="footer-right">
+    <a href="https://github.com/your-username/layoutfixer" class="footer-link" target="_blank" rel="noopener">GitHub</a>
+    <span class="footer-privacy">Privacy: no data collected, no network connections.</span>
+  </div>
+</footer>
+
+</body>
+</html>

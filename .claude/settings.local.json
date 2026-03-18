@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth:*)",
+      "Bash(py --version)",
+      "Bash(py -m pip install pytest)",
+      "Bash(py -m pip install pynput pyperclip pywin32 pystray customtkinter Pillow)",
+      "Bash(py:*)",
+      "Bash(taskkill //F //IM python.exe)",
+      "Bash(git:*)"
+    ]
+  }
+}

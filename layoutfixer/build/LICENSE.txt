@@ -1,0 +1,32 @@
+LayoutFixer — License & Terms of Use
+=====================================
+
+Copyright (c) 2026 LayoutFixer
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software, to use, copy, modify, merge, publish, distribute, and/or
+sublicense it, subject to the following conditions:
+
+  1. ATTRIBUTION
+     Any redistribution of this software, in original or modified form, must
+     retain this copyright notice and credit the original project.
+
+  2. NO WARRANTY
+     This software is provided "as is", without warranty of any kind, express
+     or implied, including but not limited to warranties of merchantability,
+     fitness for a particular purpose, or non-infringement. In no event shall
+     the authors be liable for any claim, damages, or other liability arising
+     from the use of this software.
+
+  3. PRIVACY
+     LayoutFixer makes zero network connections. It does not collect, transmit,
+     or store any personal data, keystrokes, clipboard content, or usage
+     statistics. Everything runs locally on your machine.
+
+  4. FREE FOREVER
+     This software is free to use for personal and commercial purposes. You may
+     not sell the software itself as a standalone product without significant
+     modification.
+
+By clicking "I accept the agreement" and continuing the installation, you
+agree to these terms.
