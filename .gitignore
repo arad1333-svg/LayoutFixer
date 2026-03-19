@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# PyInstaller build artifacts
+layoutfixer/build/layoutfixer/
+layoutfixer/dist/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS
+Thumbs.db
+.DS_Store
