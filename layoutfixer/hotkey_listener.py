@@ -42,14 +42,31 @@ class HotkeyListener:
         with self._lock:
             self._stop_listener()
 
-    def update_hotkey(self, new_hotkey: str) -> None:
-        """Atomically replace the current hotkey with a new one."""
+    def update_hotkey(self, new_hotkey: str) -> bool:
+        """Atomically replace the current hotkey with a new one.
+
+        Returns True on success, False if registration failed (reverts to old hotkey).
+        """
         with self._lock:
+            old_hotkey = self._hotkey
             self._stop_listener()
             self._hotkey = new_hotkey
             if not self._suspended:
-                self._start_listener()
+                try:
+                    self._start_listener()
+                except Exception:
+                    log.warning(
+                        'Failed to register hotkey %s, reverting to %s',
+                        new_hotkey, old_hotkey, exc_info=True,
+                    )
+                    self._hotkey = old_hotkey
+                    try:
+                        self._start_listener()
+                    except Exception:
+                        log.error('Failed to restore previous hotkey %s', old_hotkey, exc_info=True)
+                    return False
         log.info('Hotkey updated to: %s', new_hotkey)
+        return True
 
     def suspend(self) -> None:
         """Temporarily disable the hotkey without forgetting it."""
@@ -87,6 +104,7 @@ class HotkeyListener:
         if self._listener is not None:
             try:
                 self._listener.stop()
+                self._listener.join(timeout=2.0)  # Wait for hook to fully release
             except Exception:
                 log.debug('Error stopping hotkey listener', exc_info=True)
             self._listener = None

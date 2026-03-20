@@ -38,6 +38,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 ; Start with Windows is checked by default — core value prop of the app
 Name: "startupentry"; Description: "Start LayoutFixer with Windows"; GroupDescription: "Options:";
+; Start Menu shortcut is checked by default
+Name: "startmenu"; Description: "Add to Start Menu"; GroupDescription: "Options:";
 ; Desktop shortcut is opt-in
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Options:"; Flags: unchecked
 
@@ -45,7 +47,7 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Source: "..\dist\{#AppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: startmenu
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Registry]

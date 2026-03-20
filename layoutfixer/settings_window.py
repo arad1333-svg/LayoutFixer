@@ -231,7 +231,14 @@ class SettingsWindow(ctk.CTkToplevel):
 
         # Re-register hotkey if changed
         if self._listener and s['hotkey'] != old_hotkey:
-            self._listener.update_hotkey(s['hotkey'])
+            success = self._listener.update_hotkey(s['hotkey'])
+            if not success:
+                # Revert to old hotkey and re-save
+                s['hotkey'] = old_hotkey
+                settings_manager.save(s)
+                self._hotkey_var.set(old_hotkey)
+                self._show_error('Could not register that hotkey — your previous hotkey has been restored.')
+                return
 
         self.destroy()
 
@@ -244,6 +251,16 @@ class SettingsWindow(ctk.CTkToplevel):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _show_error(self, message: str) -> None:
+        """Show a temporary error banner at the top of the window."""
+        banner = ctk.CTkLabel(
+            self, text=message,
+            fg_color='#7f1d1d', text_color='#fca5a5',
+            corner_radius=6, font=ctk.CTkFont(size=11),
+        )
+        banner.place(relx=0.5, rely=0.97, anchor='s', relwidth=0.95)
+        self.after(4000, banner.destroy)
 
     def _sep(self, parent):
         ctk.CTkFrame(parent, height=1, fg_color='gray30').pack(fill='x', padx=16, pady=8)
