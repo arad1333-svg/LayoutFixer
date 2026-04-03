@@ -69,23 +69,71 @@ class SettingsWindow(ctk.CTkToplevel):
     # ------------------------------------------------------------------
 
     def _build_ui(self):
-        self._tabview = ctk.CTkTabview(
-            self,
-            fg_color=SURFACE_CONTAINER,
-            segmented_button_selected_color=PRIMARY,
-            segmented_button_unselected_color=SURFACE_LOW,
-            segmented_button_selected_hover_color=PRIMARY_HOVER,
-            segmented_button_unselected_hover_color=SURFACE_HIGH,
-        )
-        self._tabview.pack(fill='both', expand=True, padx=16, pady=16)
+        # ── Tab bar ──────────────────────────────────────────────────
+        tab_bar = ctk.CTkFrame(self, fg_color=SURFACE_LOW, corner_radius=0)
+        tab_bar.pack(fill='x')
 
-        self._tabview.add('General')
-        self._tabview.add('Hotkey')
-        self._tabview.add('Key Map')
+        # Bottom border beneath the tab bar
+        ctk.CTkFrame(self, fg_color=OUTLINE_VAR, height=1, corner_radius=0).pack(fill='x')
 
-        self._build_general_tab(self._tabview.tab('General'))
-        self._build_hotkey_tab(self._tabview.tab('Hotkey'))
-        self._build_keymap_tab(self._tabview.tab('Key Map'))
+        # Content area (fills remaining space)
+        content_area = ctk.CTkFrame(self, fg_color=SURFACE_CONTAINER, corner_radius=0)
+        content_area.pack(fill='both', expand=True)
+
+        tab_names = ['General', 'Hotkey', 'Key Map']
+        self._tab_frames: dict[str, ctk.CTkFrame] = {}
+        self._tab_buttons: dict[str, ctk.CTkButton] = {}
+        self._tab_indicators: dict[str, ctk.CTkFrame] = {}
+        self._active_tab: str = ''
+
+        # Build tab buttons with underline indicator
+        for name in tab_names:
+            group = ctk.CTkFrame(tab_bar, fg_color='transparent', corner_radius=0)
+            group.pack(side='left')
+
+            btn = ctk.CTkButton(
+                group, text=name,
+                fg_color='transparent',
+                hover_color=SURFACE_HIGH,
+                text_color=ON_SURFACE_VAR,
+                font=ctk.CTkFont(family='Segoe UI', size=12, weight='bold'),
+                corner_radius=0,
+                height=38,
+                width=90,
+                command=lambda n=name: self._switch_tab(n),
+            )
+            btn.pack()
+
+            indicator = ctk.CTkFrame(group, fg_color='transparent', height=2, corner_radius=0)
+            indicator.pack(fill='x')
+
+            self._tab_buttons[name] = btn
+            self._tab_indicators[name] = indicator
+
+        # Build content frames (one per tab)
+        for name in tab_names:
+            frame = ctk.CTkFrame(content_area, fg_color='transparent', corner_radius=0)
+            self._tab_frames[name] = frame
+
+        # Populate tab contents
+        self._build_general_tab(self._tab_frames['General'])
+        self._build_hotkey_tab(self._tab_frames['Hotkey'])
+        self._build_keymap_tab(self._tab_frames['Key Map'])
+
+        # Show first tab
+        self._switch_tab('General')
+
+    def _switch_tab(self, name: str) -> None:
+        """Activate a tab: update button/indicator styling and swap visible frame."""
+        if self._active_tab:
+            self._tab_frames[self._active_tab].pack_forget()
+            self._tab_buttons[self._active_tab].configure(text_color=ON_SURFACE_VAR)
+            self._tab_indicators[self._active_tab].configure(fg_color='transparent')
+
+        self._active_tab = name
+        self._tab_frames[name].pack(fill='both', expand=True)
+        self._tab_buttons[name].configure(text_color=PRIMARY)
+        self._tab_indicators[name].configure(fg_color=PRIMARY)
 
     # ------------------------------------------------------------------
     # Tab 1 — General
@@ -154,7 +202,7 @@ class SettingsWindow(ctk.CTkToplevel):
         s = self._settings
 
         ctk.CTkLabel(
-            parent, text='HOTKEY',
+            parent, text='ACTIVATION HOTKEY',
             font=ctk.CTkFont(family='Segoe UI', size=11, weight='bold'),
             text_color=ON_SURFACE_VAR,
         ).pack(anchor='w', padx=16, pady=(20, 4))
@@ -167,7 +215,9 @@ class SettingsWindow(ctk.CTkToplevel):
                 parent, text=label, variable=self._hotkey_var, value=value,
                 fg_color=PRIMARY, border_color=OUTLINE_VAR, hover_color=PRIMARY_HOVER,
                 font=ctk.CTkFont(family='Segoe UI', size=12),
-            ).pack(anchor='w', padx=24, pady=2)
+                radiobutton_width=18, radiobutton_height=18,
+                border_width_checked=2, border_width_unchecked=2,
+            ).pack(anchor='w', padx=24, pady=4)
 
         self._sep(parent)
 
@@ -187,34 +237,51 @@ class SettingsWindow(ctk.CTkToplevel):
         effective = {**EN_TO_HE, **custom}
 
         ctk.CTkLabel(
-            parent, text='Click a Hebrew cell and press a key to remap it.',
+            parent, text='Click a cell and type a new character to remap.',
             font=ctk.CTkFont(family='Segoe UI', size=11),
             text_color=ON_SURFACE_VAR,
         ).pack(pady=(12, 4))
 
         # Scrollable frame for the table
-        scroll_frame = ctk.CTkScrollableFrame(parent, fg_color=SURFACE_CONTAINER, height=360)
+        scroll_frame = ctk.CTkScrollableFrame(parent, fg_color=SURFACE_CONTAINER, height=320)
         scroll_frame.pack(fill='both', expand=True, padx=8, pady=4)
 
-        # Header
+        # Sticky header row
+        header = ctk.CTkFrame(scroll_frame, fg_color=SURFACE_HIGH, corner_radius=0)
+        header.pack(fill='x')
         ctk.CTkLabel(
-            scroll_frame, text='EN Key',
-            font=ctk.CTkFont(family='Segoe UI', weight='bold'), width=80,
-        ).grid(row=0, column=0, padx=8, pady=4)
+            header, text='EN KEY', width=80,
+            font=ctk.CTkFont(family='Segoe UI', size=10, weight='bold'),
+            text_color=ON_SURFACE_VAR,
+        ).pack(side='left', padx=16, pady=8)
         ctk.CTkLabel(
-            scroll_frame, text='HE Character',
-            font=ctk.CTkFont(family='Segoe UI', weight='bold'), width=120,
-        ).grid(row=0, column=1, padx=8, pady=4)
+            header, text='HE CHAR',
+            font=ctk.CTkFont(family='Segoe UI', size=10, weight='bold'),
+            text_color=ON_SURFACE_VAR,
+        ).pack(side='right', padx=16, pady=8)
 
         self._keymap_entries: list[tuple[str, ctk.CTkEntry]] = []
 
         for row_idx, (en_key, he_char) in enumerate(sorted(effective.items()), start=1):
-            ctk.CTkLabel(scroll_frame, text=repr(en_key), width=80).grid(
-                row=row_idx, column=0, padx=8, pady=2)
+            row_bg = SURFACE_LOW if row_idx % 2 == 1 else SURFACE_CONTAINER
+            row_frame = ctk.CTkFrame(scroll_frame, fg_color=row_bg, corner_radius=0)
+            row_frame.pack(fill='x')
 
-            entry = ctk.CTkEntry(scroll_frame, width=120, justify='center')
+            ctk.CTkLabel(
+                row_frame, text=en_key, width=80,
+                font=ctk.CTkFont(family='Segoe UI', size=12),
+                text_color=ON_SURFACE_VAR,
+            ).pack(side='left', padx=16, pady=5)
+
+            entry = ctk.CTkEntry(
+                row_frame, width=80, justify='center',
+                fg_color='transparent',
+                border_color=OUTLINE_VAR,
+                border_width=1,
+                text_color=ON_SURFACE,
+            )
             entry.insert(0, he_char)
-            entry.grid(row=row_idx, column=1, padx=8, pady=2)
+            entry.pack(side='right', padx=16, pady=5)
             self._keymap_entries.append((en_key, entry))
 
         ctk.CTkButton(
@@ -317,7 +384,7 @@ class SettingsWindow(ctk.CTkToplevel):
         if subtitle:
             ctk.CTkLabel(
                 text_frame, text=subtitle,
-                font=ctk.CTkFont(family='Segoe UI', size=10),
+                font=ctk.CTkFont(family='Segoe UI', size=12),
                 text_color=ON_SURFACE_VAR,
             ).pack(anchor='w')
 
@@ -326,6 +393,8 @@ class SettingsWindow(ctk.CTkToplevel):
             onvalue=True, offvalue=False,
             button_color=PRIMARY, progress_color=PRIMARY,
             button_hover_color=PRIMARY_HOVER, fg_color=OUTLINE_VAR,
+            switch_width=46, switch_height=24, button_length=20,
+            corner_radius=12,
         ).pack(side='right')
 
 
