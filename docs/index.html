@@ -1,453 +1,488 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LayoutFixer — Fix mistyped Hebrew/English text in one keystroke</title>
   <meta name="description" content="Typed in the wrong layout again? LayoutFixer converts your text and switches keyboard layout automatically. Free, no admin required." />
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'primary':                  '#8eff71',
+            'primary-container':        '#2ff801',
+            'primary-dim':              '#2be800',
+            'on-primary':               '#0d6100',
+            'on-primary-fixed':         '#064200',
+            'surface':                  '#0e0e0e',
+            'surface-dim':              '#0e0e0e',
+            'surface-bright':           '#2c2c2c',
+            'surface-container-lowest': '#000000',
+            'surface-container-low':    '#131313',
+            'surface-container':        '#1a1919',
+            'surface-container-high':   '#201f1f',
+            'surface-container-highest':'#262626',
+            'on-surface':               '#ffffff',
+            'on-surface-variant':       '#adaaaa',
+            'outline':                  '#777575',
+            'outline-variant':          '#494847',
+            'tertiary':                 '#88f6ff',
+            'error':                    '#ff7351',
+          },
+          fontFamily: {
+            'headline': ['"Space Grotesk"', 'sans-serif'],
+            'body':     ['"Inter"', 'sans-serif'],
+            'label':    ['"Space Grotesk"', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg: #0d0d14;
-      --surface: #13131f;
-      --border: #1e1e2e;
-      --accent: #3b82f6;
-      --accent-glow: rgba(59, 130, 246, 0.35);
-      --accent-dim: rgba(59, 130, 246, 0.12);
-      --text: #e2e8f0;
-      --text-muted: #64748b;
-      --text-dim: #94a3b8;
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     }
 
-    html { scroll-behavior: smooth; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
+    /* ── Glow helpers ── */
+    .kinetic-glow {
+      filter: drop-shadow(0 0 15px rgba(57, 255, 20, 0.4));
+    }
+    .led-indicator {
+      box-shadow: 0 0 20px 2px rgba(57, 255, 20, 0.5);
     }
 
-    /* ── NAV ── */
-    nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
+    /*
+      Synchronization Logic:
+      - Total loop: 8 seconds.
+      - 4 letters, spaced 2 seconds apart (8s / 4).
+      - A letter reaches center (0px) at 50% of its animation = 4s mark.
+      - Portal pulses every 2s to match letter arrival frequency.
+      - Pulse peak is at 50% of its 2s cycle (1s point).
+    */
+
+    @keyframes linear-flow {
+      0%   { transform: translateX(-500px); opacity: 0; }
+      15%  { opacity: 1; }
+      85%  { opacity: 1; }
+      100% { transform: translateX(500px); opacity: 0; }
+    }
+
+    .factory-item-container {
+      position: absolute;
+      animation: linear-flow 8s linear infinite;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 2rem;
-      height: 56px;
-      background: rgba(13, 13, 20, 0.85);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .nav-logo {
-      font-size: 1.05rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: var(--text);
-      text-decoration: none;
-    }
-
-    .nav-logo span { color: var(--accent); }
-
-    .nav-link {
-      color: var(--text-dim);
-      text-decoration: none;
-      font-size: 0.875rem;
-      transition: color 0.15s;
-    }
-
-    .nav-link:hover { color: var(--text); }
-
-    /* ── HERO ── */
-    .hero {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      padding: 7rem 1.5rem 5rem;
-      max-width: 780px;
-      margin: 0 auto;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.3rem 0.85rem;
-      border-radius: 999px;
-      border: 1px solid rgba(59, 130, 246, 0.4);
-      background: var(--accent-dim);
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--accent);
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-      margin-bottom: 2rem;
-    }
-
-    .badge-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 6px var(--accent);
-    }
-
-    h1 {
-      font-size: clamp(2.2rem, 6vw, 3.6rem);
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      line-height: 1.1;
-      margin-bottom: 1.5rem;
-      color: #f1f5f9;
-    }
-
-    h1 .accent { color: var(--accent); }
-
-    .subheadline {
-      font-size: clamp(1rem, 2.5vw, 1.15rem);
-      color: var(--text-dim);
-      max-width: 600px;
-      margin-bottom: 2.5rem;
-      line-height: 1.7;
-    }
-
-    .subheadline .hebrew {
-      font-family: "Arial Hebrew", "David", serif;
-      direction: rtl;
-      color: var(--text-muted);
-      font-style: italic;
-    }
-
-    .cta-group {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 0.85rem 2.2rem;
-      border-radius: 10px;
-      background: var(--accent);
-      color: #fff;
-      font-size: 1.05rem;
-      font-weight: 700;
-      text-decoration: none;
-      letter-spacing: -0.01em;
-      box-shadow: 0 0 28px var(--accent-glow), 0 4px 16px rgba(0,0,0,0.4);
-      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
-    }
-
-    .btn-primary:hover {
-      background: #2563eb;
-      transform: translateY(-2px);
-      box-shadow: 0 0 40px var(--accent-glow), 0 8px 24px rgba(0,0,0,0.4);
-    }
-
-    .btn-primary svg { flex-shrink: 0; }
-
-    .cta-meta {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    /* ── SECTION COMMON ── */
-    section {
-      padding: 5rem 1.5rem;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    .section-label {
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 0.75rem;
-      text-align: center;
-    }
-
-    .section-title {
-      font-size: clamp(1.6rem, 4vw, 2.2rem);
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      text-align: center;
-      color: #f1f5f9;
-      margin-bottom: 3.5rem;
-    }
-
-    .divider {
-      border: none;
-      border-top: 1px solid var(--border);
-    }
-
-    /* ── HOW IT WORKS ── */
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1.5rem;
-    }
-
-    .step {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 2rem 1.5rem;
-      position: relative;
-      transition: border-color 0.2s;
-    }
-
-    .step:hover { border-color: rgba(59, 130, 246, 0.4); }
-
-    .step-number {
-      display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--accent-dim);
-      border: 1px solid rgba(59, 130, 246, 0.35);
-      color: var(--accent);
-      font-size: 0.85rem;
-      font-weight: 800;
-      margin-bottom: 1rem;
+      width: 100px;
     }
 
-    .step h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #f1f5f9;
-      margin-bottom: 0.4rem;
+    /* Swap Hebrew→English exactly at center (50%) */
+    @keyframes swap-to-english {
+      0%, 49.9% { opacity: 0; }
+      50%, 100%  { opacity: 1; }
+    }
+    @keyframes swap-to-hebrew {
+      0%, 49.9% { opacity: 1; }
+      50%, 100%  { opacity: 0; }
     }
 
-    .step p {
-      font-size: 0.88rem;
-      color: var(--text-dim);
-      line-height: 1.55;
+    .hebrew-part {
+      animation: swap-to-hebrew 8s linear infinite;
+      color: rgba(173, 170, 170, 0.3);
+    }
+    .english-part {
+      position: absolute;
+      animation: swap-to-english 8s linear infinite;
+      color: #8eff71;
+      filter: drop-shadow(0 0 15px rgba(57, 255, 20, 0.6));
     }
 
-    .step .kbd {
-      display: inline-block;
-      padding: 0.15rem 0.5rem;
-      border-radius: 5px;
-      background: #1e1e2e;
-      border: 1px solid #2d2d44;
-      font-family: "Cascadia Code", "Consolas", monospace;
-      font-size: 0.85em;
-      color: var(--accent);
+    /* Stagger letters evenly across the 8s loop */
+    .delay-1 { animation-delay: -2s; }
+    .delay-2 { animation-delay: -4s; }
+    .delay-3 { animation-delay: -6s; }
+
+    /* Click-to-pause: freeze all animated children */
+    .paused .factory-item-container,
+    .paused .hebrew-part,
+    .paused .english-part,
+    .paused .portal-object,
+    .paused .portal-glow,
+    .paused .tech-ring,
+    .paused .scan-line {
+      animation-play-state: paused !important;
     }
 
-    /* ── FEATURES ── */
-    .features {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1.25rem;
+    /* Rotating portal rings */
+    .tech-ring {
+      border: 1px solid rgba(57, 255, 20, 0.15);
+      animation: spin 20s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
     }
 
-    .feature {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
-      transition: border-color 0.2s;
+    /* Glass core panel */
+    .glass-panel {
+      background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(142, 255, 113, 0.2);
     }
 
-    .feature:hover { border-color: rgba(59, 130, 246, 0.3); }
-
-    .feature-icon {
-      font-size: 1.5rem;
-      line-height: 1;
+    /* Portal pulse — peaks at 1s into its 2s cycle to align with 4s letter arrival */
+    @keyframes pulse-glow {
+      0%, 45%, 55%, 100% {
+        opacity: 0.8;
+        filter: drop-shadow(0 0 15px rgba(57, 255, 20, 0.4));
+        transform: scale(1);
+      }
+      50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 45px rgba(57, 255, 20, 1));
+        transform: scale(1.1);
+      }
+    }
+    .portal-glow {
+      animation: pulse-glow 2s ease-in-out infinite;
+      animation-delay: 1s;
     }
 
-    .feature h3 {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #f1f5f9;
+    /* Scan line inside portal core */
+    @keyframes scan {
+      0%   { top: -10%; }
+      100% { top: 110%; }
     }
-
-    .feature p {
-      font-size: 0.83rem;
-      color: var(--text-dim);
-      line-height: 1.5;
-    }
-
-    /* ── FOOTER ── */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 2rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 1rem;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-
-    .footer-left {
-      font-size: 0.82rem;
-      color: var(--text-muted);
-    }
-
-    .footer-right {
-      display: flex;
-      align-items: center;
-      gap: 1.25rem;
-    }
-
-    .footer-link {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.82rem;
-      transition: color 0.15s;
-    }
-
-    .footer-link:hover { color: var(--text-dim); }
-
-    .footer-privacy {
-      font-size: 0.82rem;
-      color: var(--text-muted);
-    }
-
-    /* ── GLOW BG ── */
-    .hero-glow {
-      position: fixed;
-      top: -200px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 700px;
-      height: 500px;
-      background: radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    @media (max-width: 600px) {
-      nav { padding: 0 1rem; }
-      .hero { padding: 5rem 1.25rem 3.5rem; }
-      footer { flex-direction: column; align-items: flex-start; }
+    .scan-line {
+      animation: scan 2s linear infinite;
     }
   </style>
 </head>
-<body>
 
-<div class="hero-glow" aria-hidden="true"></div>
+<body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-on-primary-fixed">
 
-<!-- NAV -->
-<nav>
-  <a href="#" class="nav-logo">Layout<span>Fixer</span></a>
-  <a href="https://github.com/arad1333-svg/LayoutFixer" class="nav-link" target="_blank" rel="noopener">GitHub →</a>
+<!-- ── NAV ── -->
+<nav class="fixed top-0 w-full z-50 bg-surface border-b border-outline-variant/10 backdrop-blur-sm">
+  <div class="max-w-screen-xl mx-auto flex items-center justify-between px-6 h-16">
+
+    <!-- Logo -->
+    <a href="#" class="font-headline font-bold italic text-xl tracking-tight">
+      <span class="text-on-surface">Layout</span><span class="text-primary">Fixer</span>
+    </a>
+
+    <!-- Nav Links (desktop) -->
+    <div class="hidden md:flex items-center gap-8 font-label text-xs tracking-[0.18em] uppercase">
+      <a href="#how"      class="text-on-surface-variant hover:text-primary transition-colors duration-200">How_It_Works</a>
+      <a href="#features" class="text-on-surface-variant hover:text-primary transition-colors duration-200">Features</a>
+      <a href="https://github.com/arad1333-svg/LayoutFixer" target="_blank" rel="noopener"
+         class="text-on-surface-variant hover:text-primary transition-colors duration-200">GitHub</a>
+    </div>
+
+    <!-- CTA -->
+    <a href="https://github.com/arad1333-svg/LayoutFixer/releases/latest"
+       target="_blank" rel="noopener"
+       class="bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed font-label font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded kinetic-glow hover:scale-105 transition-transform active:scale-95">
+      Download
+    </a>
+  </div>
 </nav>
 
-<!-- HERO -->
-<div class="hero">
-  <div class="badge">
-    <span class="badge-dot"></span>
-    Free &nbsp;·&nbsp; Windows &nbsp;·&nbsp; No admin needed
-  </div>
+<main class="pt-16">
 
-  <h1>You typed in <span class="accent">Hebrew</span> again,<br>didn't you.</h1>
+  <!-- ── HERO ── -->
+  <section class="relative min-h-[921px] flex flex-col items-center justify-center px-6 overflow-hidden">
 
-  <p class="subheadline">
-    You were mid-sentence, switched windows, totally forgot your layout was still Hebrew,
-    typed a full paragraph of complete gibberish — and now you're staring at
-    <span class="hebrew">שדגכעיחלך</span> wondering why life is like this.
-    We've all been there. LayoutFixer fixes it in one keystroke.
-  </p>
+    <!-- Ambient glow blob -->
+    <div class="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[500px] opacity-[0.06]"
+         style="background: radial-gradient(ellipse at center, #8eff71 0%, transparent 70%);"></div>
 
-  <div class="cta-group">
-    <a href="https://github.com/arad1333-svg/LayoutFixer/releases/latest" class="btn-primary" target="_blank" rel="noopener">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-        <polyline points="7 10 12 15 17 10"/>
-        <line x1="12" y1="15" x2="12" y2="3"/>
-      </svg>
-      Download for Windows — Free
-    </a>
-    <span class="cta-meta">v1.0.0 &nbsp;·&nbsp; No admin required &nbsp;·&nbsp; 14 MB</span>
-  </div>
-</div>
+    <div class="max-w-4xl w-full text-center z-10">
 
-<hr class="divider" style="max-width:900px; margin:0 auto;" />
+      <h1 class="font-headline text-5xl md:text-8xl font-bold tracking-tighter uppercase mb-6 leading-[0.9]">
+        You typed in Hebrew<br>
+        <span class="text-primary italic">again, didn't you.</span>
+      </h1>
 
-<!-- HOW IT WORKS -->
-<section id="how">
-  <p class="section-label">How it works</p>
-  <h2 class="section-title">Three steps. One second.</h2>
+      <p class="font-body text-on-surface-variant text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+        You were mid-sentence, switched windows, totally forgot your layout was still Hebrew,
+        typed a full paragraph of complete gibberish — and now you're staring at
+        <span class="italic" dir="rtl" style="font-family:'Arial Hebrew','David',serif;">שדגכעיחלך</span>
+        wondering why life is like this. We've all been there. LayoutFixer fixes it in one keystroke.
+      </p>
 
-  <div class="steps">
-    <div class="step">
-      <div class="step-number">1</div>
-      <h3>Select the wrong text</h3>
-      <p>Highlight the gibberish you just typed — whether it's a word, a sentence, or a whole paragraph.</p>
+      <div class="flex flex-col items-center gap-3">
+        <a href="https://github.com/arad1333-svg/LayoutFixer/releases/latest"
+           target="_blank" rel="noopener"
+           class="bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed font-label font-extrabold text-lg uppercase tracking-tight px-10 py-5 rounded-md kinetic-glow hover:scale-105 transition-all active:scale-95">
+          Download for Windows — Free
+        </a>
+        <div class="flex items-center gap-2 font-label text-sm tracking-widest uppercase text-on-surface-variant">
+          <span class="w-2 h-2 rounded-full bg-primary led-indicator"></span>
+          v1.0.0 stable build &nbsp;·&nbsp; No admin required &nbsp;·&nbsp; 14 MB
+        </div>
+      </div>
     </div>
-    <div class="step">
-      <div class="step-number">2</div>
-      <h3>Press <span class="kbd">Ctrl+Alt+Z</span></h3>
-      <p>LayoutFixer intercepts the hotkey, converts the characters, and pastes the fixed text back instantly.</p>
-    </div>
-    <div class="step">
-      <div class="step-number">3</div>
-      <h3>Done — layout switches too</h3>
-      <p>Your keyboard layout flips automatically so the next thing you type comes out correct. No fumbling.</p>
-    </div>
-  </div>
-</section>
 
-<hr class="divider" style="max-width:900px; margin:0 auto;" />
+    <!-- ── FACTORY CHAIN ANIMATION ── -->
+    <div class="mt-20 w-full max-w-5xl relative aspect-[21/9] bg-surface-container-low rounded-xl overflow-hidden
+                border border-outline-variant/10 cursor-pointer group paused"
+         onclick="this.classList.toggle('paused')"
+         title="Click to play / pause">
 
-<!-- FEATURES -->
-<section id="features">
-  <p class="section-label">Features</p>
-  <h2 class="section-title">Everything you need. Nothing you don't.</h2>
+      <!-- Background grid -->
+      <div class="absolute inset-0 opacity-[0.03]"
+           style="background-image: linear-gradient(#8eff71 1px, transparent 1px),
+                                    linear-gradient(90deg, #8eff71 1px, transparent 1px);
+                  background-size: 50px 50px;"></div>
 
-  <div class="features">
-    <div class="feature">
-      <div class="feature-icon">🖥️</div>
-      <h3>Works in any app</h3>
-      <p>Browser, Word, Slack, Notepad, your IDE — if Windows sees it, LayoutFixer works in it.</p>
-    </div>
-    <div class="feature">
-      <div class="feature-icon">📋</div>
-      <h3>Clipboard always restored</h3>
-      <p>LayoutFixer borrows your clipboard for a split second, then puts it back exactly as it found it.</p>
-    </div>
-    <div class="feature">
-      <div class="feature-icon">🔇</div>
-      <h3>Silent tray app</h3>
-      <p>Runs quietly in the system tray. Right-click for settings. Never gets in your way.</p>
-    </div>
-    <div class="feature">
-      <div class="feature-icon">🆓</div>
-      <h3>Free forever</h3>
-      <p>No license key, no trial period, no "Pro" tier. Open source and free to use commercially.</p>
-    </div>
-  </div>
-</section>
+      <!-- Animation layer -->
+      <div class="absolute inset-0 flex items-center justify-center">
 
-<hr class="divider" style="max-width:900px; margin:0 auto;" />
+        <!-- Factory letters: Hebrew → English -->
+        <div class="factory-item-container font-headline text-7xl z-10">
+          <span class="hebrew-part">א</span>
+          <span class="english-part">T</span>
+        </div>
+        <div class="factory-item-container delay-1 font-headline text-7xl z-10">
+          <span class="hebrew-part delay-1">ב</span>
+          <span class="english-part delay-1">C</span>
+        </div>
+        <div class="factory-item-container delay-2 font-headline text-7xl z-10">
+          <span class="hebrew-part delay-2">ג</span>
+          <span class="english-part delay-2">D</span>
+        </div>
+        <div class="factory-item-container delay-3 font-headline text-7xl z-10">
+          <span class="hebrew-part delay-3">ד</span>
+          <span class="english-part delay-3">S</span>
+        </div>
 
-<!-- FOOTER -->
-<footer>
-  <span class="footer-left">© 2026 LayoutFixer</span>
-  <div class="footer-right">
-    <a href="https://github.com/arad1333-svg/LayoutFixer" class="footer-link" target="_blank" rel="noopener">GitHub</a>
-    <span class="footer-privacy">Privacy: no data collected, no network connections.</span>
+        <!-- Central portal object -->
+        <div class="portal-object relative w-48 h-48 md:w-64 md:h-64 z-20 flex items-center justify-center pointer-events-none">
+
+          <!-- Outer rotating ring -->
+          <div class="absolute inset-0 rounded-3xl tech-ring"></div>
+          <!-- Inner counter-rotating ring -->
+          <div class="absolute inset-4 rounded-2xl tech-ring"
+               style="animation-direction: reverse; animation-duration: 12s;"></div>
+
+          <!-- Glass core -->
+          <div class="glass-panel absolute inset-8 rounded-xl flex items-center justify-center shadow-2xl overflow-hidden portal-glow">
+            <!-- Subtle gradient overlay -->
+            <div class="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent"></div>
+            <!-- Brand label -->
+            <span class="relative z-10 font-headline font-black text-primary tracking-tighter uppercase text-sm text-center leading-tight kinetic-glow portal-glow">
+              Layout<br>Fixer
+            </span>
+            <!-- Scan line -->
+            <div class="scan-line absolute left-0 w-full h-px bg-primary/50"
+                 style="box-shadow: 0 0 15px 1px #8eff71;"></div>
+          </div>
+
+          <!-- LED markers (cardinal positions) -->
+          <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-full portal-glow"></div>
+          <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-full portal-glow"></div>
+          <div class="absolute top-1/2 -left-1 -translate-y-1/2 w-1 h-8 bg-primary rounded-full portal-glow"></div>
+          <div class="absolute top-1/2 -right-1 -translate-y-1/2 w-1 h-8 bg-primary rounded-full portal-glow"></div>
+        </div>
+
+      </div><!-- /animation layer -->
+
+      <!-- Hint text -->
+      <div class="absolute bottom-3 right-5 font-label text-[10px] uppercase tracking-widest
+                  text-on-surface-variant/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        Click to play sequence
+      </div>
+
+    </div><!-- /factory container -->
+
+  </section>
+  <!-- ── /HERO ── -->
+
+
+  <!-- ── HOW IT WORKS ── -->
+  <section id="how" class="py-32 px-6 bg-surface-container-low">
+    <div class="max-w-screen-xl mx-auto">
+
+      <div class="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
+        <h2 class="font-headline text-4xl md:text-6xl font-bold tracking-tighter uppercase leading-none">
+          Three steps.<br><span class="text-primary">One second.</span>
+        </h2>
+        <div class="h-px bg-outline-variant/30 flex-grow mx-8 hidden md:block mb-2"></div>
+        <div class="font-label text-xs tracking-widest text-on-surface-variant uppercase">Workflow Optimization</div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+        <!-- Step 1 -->
+        <div class="p-10 bg-surface border-l-4 border-primary/20 hover:border-primary transition-colors duration-200 group">
+          <div class="font-headline text-6xl font-black text-surface-container-highest mb-6
+                      group-hover:text-primary/10 transition-colors duration-200">01</div>
+          <h3 class="font-headline text-2xl font-bold uppercase mb-4">Select the wrong text</h3>
+          <p class="text-on-surface-variant leading-relaxed">
+            Highlight the gibberish you just typed — whether it's a word, a sentence, or a whole paragraph.
+          </p>
+        </div>
+
+        <!-- Step 2 (active) -->
+        <div class="p-10 bg-surface border-l-4 border-primary group">
+          <div class="font-headline text-6xl font-black text-primary/20 mb-6">02</div>
+          <h3 class="font-headline text-2xl font-bold uppercase mb-4">
+            Press <span class="text-primary">Ctrl+Alt+Z</span>
+          </h3>
+          <p class="text-on-surface-variant leading-relaxed">
+            LayoutFixer intercepts the hotkey, converts the characters, and pastes the fixed text back instantly.
+          </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="p-10 bg-surface border-l-4 border-primary/20 hover:border-primary transition-colors duration-200 group">
+          <div class="font-headline text-6xl font-black text-surface-container-highest mb-6
+                      group-hover:text-primary/10 transition-colors duration-200">03</div>
+          <h3 class="font-headline text-2xl font-bold uppercase mb-4">Done — layout switches too</h3>
+          <p class="text-on-surface-variant leading-relaxed">
+            Your keyboard layout flips automatically so the next thing you type comes out correct. No fumbling.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+  <!-- ── /HOW IT WORKS ── -->
+
+
+  <!-- ── FEATURES ── -->
+  <section id="features" class="py-32 px-6">
+    <div class="max-w-screen-xl mx-auto">
+
+      <div class="text-center mb-16">
+        <h2 class="font-headline text-4xl md:text-5xl font-bold uppercase tracking-tighter mb-4">
+          Everything you need. <span class="text-on-surface-variant">Nothing you don't.</span>
+        </h2>
+        <div class="w-24 h-1 bg-primary mx-auto"></div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <!-- Feature 1 -->
+        <div class="bg-surface-container-high rounded-xl p-8 flex flex-col gap-6
+                    hover:bg-surface-bright transition-colors duration-200 border border-outline-variant/10 hover:border-primary/20">
+          <span class="material-symbols-outlined text-primary" style="font-size:2rem;">apps</span>
+          <div>
+            <h4 class="font-headline font-bold uppercase tracking-tight mb-2">Works in any app</h4>
+            <p class="text-sm text-on-surface-variant leading-relaxed">
+              Browser, Word, Slack, Notepad, your IDE — if Windows sees it, LayoutFixer works in it.
+            </p>
+          </div>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="bg-surface-container-high rounded-xl p-8 flex flex-col gap-6
+                    hover:bg-surface-bright transition-colors duration-200 border border-outline-variant/10 hover:border-primary/20">
+          <span class="material-symbols-outlined text-primary" style="font-size:2rem;">content_paste</span>
+          <div>
+            <h4 class="font-headline font-bold uppercase tracking-tight mb-2">Clipboard always restored</h4>
+            <p class="text-sm text-on-surface-variant leading-relaxed">
+              LayoutFixer borrows your clipboard for a split second, then puts it back exactly as it found it.
+            </p>
+          </div>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="bg-surface-container-high rounded-xl p-8 flex flex-col gap-6
+                    hover:bg-surface-bright transition-colors duration-200 border border-outline-variant/10 hover:border-primary/20">
+          <span class="material-symbols-outlined text-primary" style="font-size:2rem;">notifications_paused</span>
+          <div>
+            <h4 class="font-headline font-bold uppercase tracking-tight mb-2">Silent tray app</h4>
+            <p class="text-sm text-on-surface-variant leading-relaxed">
+              Runs quietly in the system tray. Right-click for settings. Never gets in your way.
+            </p>
+          </div>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="bg-surface-container-high rounded-xl p-8 flex flex-col gap-6
+                    hover:bg-surface-bright transition-colors duration-200 border border-outline-variant/10 hover:border-primary/20">
+          <span class="material-symbols-outlined text-primary" style="font-size:2rem;">volunteer_activism</span>
+          <div>
+            <h4 class="font-headline font-bold uppercase tracking-tight mb-2">Free forever</h4>
+            <p class="text-sm text-on-surface-variant leading-relaxed">
+              No license key, no trial period, no "Pro" tier. Open source and free to use commercially.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+  <!-- ── /FEATURES ── -->
+
+
+  <!-- ── CTA SECTION ── -->
+  <section class="py-24 px-6 border-t border-outline-variant/10">
+    <div class="max-w-4xl mx-auto text-center">
+
+      <div class="inline-block font-label text-[10px] tracking-[0.3em] uppercase text-primary
+                  border border-primary/30 rounded-full px-4 py-1.5 mb-8">
+        Production Ready
+      </div>
+
+      <h2 class="font-headline text-5xl md:text-6xl font-bold tracking-tighter uppercase mb-12">
+        Stop re-typing.<br>Start fixing.
+      </h2>
+
+      <a href="https://github.com/arad1333-svg/LayoutFixer/releases/latest"
+         target="_blank" rel="noopener"
+         class="group relative inline-block px-12 py-5 border-2 border-primary rounded-md overflow-hidden
+                font-headline font-black text-xl uppercase tracking-tighter text-primary
+                hover:text-on-primary-fixed transition-colors duration-300">
+        <!-- Fill layer slides up on hover -->
+        <span class="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300 -z-0"></span>
+        <span class="relative z-10">Download Executable</span>
+      </a>
+
+    </div>
+  </section>
+  <!-- ── /CTA ── -->
+
+</main>
+
+<!-- ── FOOTER ── -->
+<footer class="bg-surface border-t border-[#494847]/20">
+  <div class="max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between
+              gap-6 px-6 py-8">
+
+    <!-- Left: logo -->
+    <div class="font-headline font-bold italic text-sm tracking-tight">
+      <span class="text-on-surface">Layout</span><span class="text-primary">Fixer</span>
+    </div>
+
+    <!-- Center: links -->
+    <div class="flex flex-wrap items-center justify-center gap-6 font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+      <a href="https://github.com/arad1333-svg/LayoutFixer" target="_blank" rel="noopener"
+         class="hover:text-primary transition-colors">GitHub</a>
+      <span class="text-outline-variant">|</span>
+      <span>Privacy: no data collected, no network connections.</span>
+      <span class="text-outline-variant">|</span>
+      <a href="https://github.com/arad1333-svg/LayoutFixer" target="_blank" rel="noopener"
+         class="hover:text-primary transition-colors">Source Code</a>
+    </div>
+
+    <!-- Right: copyright -->
+    <div class="font-body text-[10px] uppercase tracking-widest text-on-surface-variant opacity-60">
+      &copy; 2026 LayoutFixer
+    </div>
+
   </div>
 </footer>
 
