@@ -109,19 +109,16 @@ def _build_menu(listener, settings: dict, on_settings: callable, on_quit: callab
 
 
 def _show_about(icon, item):
-    import tkinter as tk
-    from tkinter import messagebox
+    import __main__
 
-    root = tk.Tk()
-    root.withdraw()
-    messagebox.showinfo(
-        'About LayoutFixer',
-        'LayoutFixer v1.0.0\n\n'
-        'Hebrew ↔ English keyboard layout converter.\n'
-        'Select text → press hotkey → done.\n\n'
-        'Free & open source.',
-    )
-    root.destroy()
+    def _show():
+        import tkinter.messagebox as mb
+        mb.showinfo('LayoutFixer', 'LayoutFixer v1.0.0\nHebrew ↔ English layout converter.')
+
+    if hasattr(__main__, '_tk_root'):
+        __main__._tk_root.after(0, _show)
+    else:
+        _show()
 
 
 # ---------------------------------------------------------------------------

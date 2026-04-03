@@ -39,11 +39,13 @@ def load() -> dict:
 
 
 def save(settings: dict) -> None:
-    """Save settings to disk, creating directories as needed."""
+    """Save settings to disk atomically, creating directories as needed."""
     path = _settings_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(settings, f, ensure_ascii=False, indent=2)
+    tmp = path.with_suffix('.tmp')
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(settings, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, path)
 
 
 def reset() -> dict:

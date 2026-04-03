@@ -18,6 +18,9 @@ EN_TO_HE: dict[str, str] = {
 
 # Hebrew character → English key (reverse map, auto-generated)
 HE_TO_EN: dict[str, str] = {v: k for k, v in EN_TO_HE.items()}
+assert len(HE_TO_EN) == len(EN_TO_HE), (
+    f"HE_TO_EN collision: {len(EN_TO_HE) - len(HE_TO_EN)} duplicate(s)"
+)
 
 
 def _detect_direction(text: str) -> str:
