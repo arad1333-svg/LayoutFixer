@@ -236,9 +236,9 @@
 
     <!-- ── FACTORY CHAIN ANIMATION ── -->
     <div class="mt-20 w-full max-w-5xl relative aspect-[21/9] bg-surface-container-low rounded-xl overflow-hidden
-                border border-outline-variant/10 cursor-pointer group paused"
+                border border-outline-variant/10 cursor-pointer group"
          onclick="this.classList.toggle('paused')"
-         title="Click to play / pause">
+         title="Click to pause / play">
 
       <!-- Background grid -->
       <div class="absolute inset-0 opacity-[0.03]"
@@ -334,11 +334,12 @@
           </p>
         </div>
 
-        <!-- Step 2 (active) -->
-        <div class="p-10 bg-surface border-l-4 border-primary group">
-          <div class="font-headline text-6xl font-black text-primary/20 mb-6">02</div>
+        <!-- Step 2 -->
+        <div class="p-10 bg-surface border-l-4 border-primary/20 hover:border-primary transition-colors duration-200 group">
+          <div class="font-headline text-6xl font-black text-surface-container-highest mb-6
+                      group-hover:text-primary/10 transition-colors duration-200">02</div>
           <h3 class="font-headline text-2xl font-bold uppercase mb-4">
-            Press <span class="text-primary">Ctrl+Alt+Z</span>
+            Press <span class="text-primary">Ctrl+Alt+X</span>
           </h3>
           <p class="text-on-surface-variant leading-relaxed">
             LayoutFixer intercepts the hotkey, converts the characters, and pastes the fixed text back instantly.
