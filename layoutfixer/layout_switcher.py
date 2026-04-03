@@ -41,9 +41,6 @@ def switch(direction: str) -> bool:
         WM_INPUTLANGCHANGEREQUEST = 0x0050
         user32.PostMessageW(hwnd, WM_INPUTLANGCHANGEREQUEST, 0, hkl)
 
-        # Also activate at the thread level
-        user32.ActivateKeyboardLayout(hkl, 0)
-
         log.debug('Switched layout to %s (%s)', target_lang, layout_id)
         return True
 

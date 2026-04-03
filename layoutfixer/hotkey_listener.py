@@ -84,12 +84,14 @@ class HotkeyListener:
 
     def _stop_listener(self) -> None:
         """Stop and discard the current listener (called under lock)."""
-        if self._listener is not None:
-            try:
-                self._listener.stop()
-            except Exception:
-                log.debug('Error stopping hotkey listener', exc_info=True)
-            self._listener = None
+        if self._listener is None:
+            return
+        try:
+            self._listener.stop()
+            self._listener.join(timeout=2.0)
+        except Exception:
+            log.warning('stop listener error', exc_info=True)
+        self._listener = None
 
     def _on_hotkey(self) -> None:
         """Called by pynput on hotkey press — dispatches callback in a worker thread."""

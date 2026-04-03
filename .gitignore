@@ -18,3 +18,6 @@ env/
 # OS
 Thumbs.db
 .DS_Store
+
+# MCP config (contains API keys)
+.mcp.json

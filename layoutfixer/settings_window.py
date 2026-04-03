@@ -1,6 +1,6 @@
 """
 settings_window.py — customtkinter settings UI with three tabs:
-  General | Key Map | Advanced
+  General | Hotkey | Key Map
 """
 import logging
 import threading
@@ -20,10 +20,23 @@ HOTKEY_OPTIONS = [
     ('Ctrl + Alt + F', 'ctrl+alt+f'),
 ]
 
-ACCENT = '#3b82f6'
-BG_MAIN = '#1e1e2e'
-BG_CARD = '#2a2a3e'
-WIN_W, WIN_H = 500, 580
+# Kinetic Terminal palette
+PRIMARY           = '#8eff71'
+PRIMARY_HOVER     = '#2ff801'
+ON_PRIMARY        = '#064200'
+SURFACE           = '#0e0e0e'
+SURFACE_LOW       = '#131313'
+SURFACE_CONTAINER = '#1a1919'
+SURFACE_HIGH      = '#201f1f'
+SURFACE_BRIGHT    = '#2c2c2c'
+ON_SURFACE        = '#ffffff'
+ON_SURFACE_VAR    = '#adaaaa'
+OUTLINE           = '#777575'
+OUTLINE_VAR       = '#494847'
+ERROR             = '#ff7351'
+ERROR_HOVER       = '#e05a3a'
+
+WIN_W, WIN_H = 500, 560
 
 
 class SettingsWindow(ctk.CTkToplevel):
@@ -37,7 +50,7 @@ class SettingsWindow(ctk.CTkToplevel):
         self.title('LayoutFixer Settings')
         self.geometry(f'{WIN_W}x{WIN_H}')
         self.resizable(False, False)
-        self.configure(fg_color=BG_MAIN)
+        self.configure(fg_color=SURFACE)
 
         # Center on screen
         self.update_idletasks()
@@ -56,16 +69,23 @@ class SettingsWindow(ctk.CTkToplevel):
     # ------------------------------------------------------------------
 
     def _build_ui(self):
-        self._tabview = ctk.CTkTabview(self, fg_color=BG_CARD, segmented_button_selected_color=ACCENT)
+        self._tabview = ctk.CTkTabview(
+            self,
+            fg_color=SURFACE_CONTAINER,
+            segmented_button_selected_color=PRIMARY,
+            segmented_button_unselected_color=SURFACE_LOW,
+            segmented_button_selected_hover_color=PRIMARY_HOVER,
+            segmented_button_unselected_hover_color=SURFACE_HIGH,
+        )
         self._tabview.pack(fill='both', expand=True, padx=16, pady=16)
 
         self._tabview.add('General')
+        self._tabview.add('Hotkey')
         self._tabview.add('Key Map')
-        self._tabview.add('Advanced')
 
         self._build_general_tab(self._tabview.tab('General'))
+        self._build_hotkey_tab(self._tabview.tab('Hotkey'))
         self._build_keymap_tab(self._tabview.tab('Key Map'))
-        self._build_advanced_tab(self._tabview.tab('Advanced'))
 
     # ------------------------------------------------------------------
     # Tab 1 — General
@@ -73,19 +93,6 @@ class SettingsWindow(ctk.CTkToplevel):
 
     def _build_general_tab(self, parent):
         s = self._settings
-
-        # Hotkey section
-        ctk.CTkLabel(parent, text='HOTKEY', font=ctk.CTkFont(size=11, weight='bold'),
-                     text_color='gray').pack(anchor='w', padx=16, pady=(20, 4))
-
-        self._hotkey_var = tk.StringVar(value=s.get('hotkey', 'ctrl+alt+z'))
-        for label, value in HOTKEY_OPTIONS:
-            ctk.CTkRadioButton(
-                parent, text=label, variable=self._hotkey_var, value=value,
-                fg_color=ACCENT, border_color=ACCENT,
-            ).pack(anchor='w', padx=24, pady=2)
-
-        self._sep(parent)
 
         # Toggle: auto-switch layout
         self._auto_switch_var = tk.BooleanVar(value=s.get('auto_switch_layout', True))
@@ -102,32 +109,102 @@ class SettingsWindow(ctk.CTkToplevel):
 
         self._sep(parent)
 
+        # Theme option
+        ctk.CTkLabel(
+            parent, text='THEME',
+            font=ctk.CTkFont(family='Segoe UI', size=11, weight='bold'),
+            text_color=ON_SURFACE_VAR,
+        ).pack(anchor='w', padx=16, pady=(8, 2))
+
+        theme_val = s.get('theme', settings_manager.DEFAULTS['theme'])
+        # Normalise stored value to match OptionMenu display values
+        _theme_map = {'system': 'System', 'dark': 'Dark', 'light': 'Light'}
+        display_theme = _theme_map.get(theme_val.lower(), 'System')
+        self._theme_var = tk.StringVar(value=display_theme)
+
+        def _on_theme_change(value):
+            ctk.set_appearance_mode(value.lower())
+
+        ctk.CTkOptionMenu(
+            parent,
+            values=['System', 'Dark', 'Light'],
+            variable=self._theme_var,
+            command=_on_theme_change,
+            fg_color=SURFACE_HIGH,
+            button_color=SURFACE_BRIGHT,
+            button_hover_color=OUTLINE,
+            text_color=ON_SURFACE,
+        ).pack(anchor='w', padx=16, pady=(0, 8))
+
+        self._sep(parent)
+
         # Save button
         ctk.CTkButton(
-            parent, text='Save', fg_color=ACCENT, hover_color='#2563eb',
+            parent, text='Save',
+            fg_color=PRIMARY, hover_color=PRIMARY_HOVER, text_color=ON_PRIMARY,
+            font=ctk.CTkFont(family='Segoe UI', size=13, weight='bold'),
             command=self._save,
         ).pack(pady=(8, 16))
 
     # ------------------------------------------------------------------
-    # Tab 2 — Key Map
+    # Tab 2 — Hotkey
+    # ------------------------------------------------------------------
+
+    def _build_hotkey_tab(self, parent):
+        s = self._settings
+
+        ctk.CTkLabel(
+            parent, text='HOTKEY',
+            font=ctk.CTkFont(family='Segoe UI', size=11, weight='bold'),
+            text_color=ON_SURFACE_VAR,
+        ).pack(anchor='w', padx=16, pady=(20, 4))
+
+        self._hotkey_var = tk.StringVar(
+            value=s.get('hotkey', settings_manager.DEFAULTS['hotkey'])
+        )
+        for label, value in HOTKEY_OPTIONS:
+            ctk.CTkRadioButton(
+                parent, text=label, variable=self._hotkey_var, value=value,
+                fg_color=PRIMARY, border_color=OUTLINE_VAR, hover_color=PRIMARY_HOVER,
+                font=ctk.CTkFont(family='Segoe UI', size=12),
+            ).pack(anchor='w', padx=24, pady=2)
+
+        self._sep(parent)
+
+        ctk.CTkButton(
+            parent, text='Save',
+            fg_color=PRIMARY, hover_color=PRIMARY_HOVER, text_color=ON_PRIMARY,
+            font=ctk.CTkFont(family='Segoe UI', size=13, weight='bold'),
+            command=self._save,
+        ).pack(pady=(8, 16))
+
+    # ------------------------------------------------------------------
+    # Tab 3 — Key Map
     # ------------------------------------------------------------------
 
     def _build_keymap_tab(self, parent):
         custom = self._settings.get('custom_keymap', {})
         effective = {**EN_TO_HE, **custom}
 
-        ctk.CTkLabel(parent, text='Click a Hebrew cell and press a key to remap it.',
-                     font=ctk.CTkFont(size=11), text_color='gray').pack(pady=(12, 4))
+        ctk.CTkLabel(
+            parent, text='Click a Hebrew cell and press a key to remap it.',
+            font=ctk.CTkFont(family='Segoe UI', size=11),
+            text_color=ON_SURFACE_VAR,
+        ).pack(pady=(12, 4))
 
         # Scrollable frame for the table
-        scroll_frame = ctk.CTkScrollableFrame(parent, fg_color=BG_CARD, height=360)
+        scroll_frame = ctk.CTkScrollableFrame(parent, fg_color=SURFACE_CONTAINER, height=360)
         scroll_frame.pack(fill='both', expand=True, padx=8, pady=4)
 
         # Header
-        ctk.CTkLabel(scroll_frame, text='EN Key', font=ctk.CTkFont(weight='bold'), width=80).grid(
-            row=0, column=0, padx=8, pady=4)
-        ctk.CTkLabel(scroll_frame, text='HE Character', font=ctk.CTkFont(weight='bold'), width=120).grid(
-            row=0, column=1, padx=8, pady=4)
+        ctk.CTkLabel(
+            scroll_frame, text='EN Key',
+            font=ctk.CTkFont(family='Segoe UI', weight='bold'), width=80,
+        ).grid(row=0, column=0, padx=8, pady=4)
+        ctk.CTkLabel(
+            scroll_frame, text='HE Character',
+            font=ctk.CTkFont(family='Segoe UI', weight='bold'), width=120,
+        ).grid(row=0, column=1, padx=8, pady=4)
 
         self._keymap_entries: list[tuple[str, ctk.CTkEntry]] = []
 
@@ -141,7 +218,10 @@ class SettingsWindow(ctk.CTkToplevel):
             self._keymap_entries.append((en_key, entry))
 
         ctk.CTkButton(
-            parent, text='Reset to Defaults', fg_color='gray30', hover_color='gray40',
+            parent, text='Reset to Defaults',
+            fg_color=SURFACE_HIGH, hover_color=SURFACE_BRIGHT,
+            text_color=ON_SURFACE_VAR, border_width=1, border_color=OUTLINE_VAR,
+            font=ctk.CTkFont(family='Segoe UI', size=12),
             command=self._reset_keymap,
         ).pack(pady=8)
 
@@ -152,47 +232,6 @@ class SettingsWindow(ctk.CTkToplevel):
             entry.insert(0, EN_TO_HE.get(en_key, ''))
 
     # ------------------------------------------------------------------
-    # Tab 3 — Advanced
-    # ------------------------------------------------------------------
-
-    def _build_advanced_tab(self, parent):
-        s = self._settings
-
-        ctk.CTkLabel(parent, text='CLIPBOARD DELAY (ms)',
-                     font=ctk.CTkFont(size=11, weight='bold'), text_color='gray').pack(
-            anchor='w', padx=16, pady=(20, 2))
-
-        self._delay_var = tk.IntVar(value=s.get('clipboard_delay_ms', 100))
-        self._delay_label = ctk.CTkLabel(parent, text=f'{self._delay_var.get()} ms')
-        self._delay_label.pack(anchor='e', padx=16)
-
-        slider = ctk.CTkSlider(
-            parent, from_=50, to=300, number_of_steps=25,
-            variable=self._delay_var, button_color=ACCENT, progress_color=ACCENT,
-            command=lambda v: self._delay_label.configure(text=f'{int(v)} ms'),
-        )
-        slider.pack(fill='x', padx=16)
-
-        ctk.CTkLabel(parent, text='Increase if conversion misses text in slow apps.',
-                     font=ctk.CTkFont(size=10), text_color='gray').pack(anchor='w', padx=16)
-
-        self._sep(parent)
-
-        self._debug_var = tk.BooleanVar(value=s.get('debug_log', False))
-        self._toggle_row(parent, 'DEBUG LOGGING', self._debug_var,
-                         subtitle='Writes verbose log to %APPDATA%\\LayoutFixer\\debug.log')
-
-        self._sep(parent)
-
-        ctk.CTkLabel(parent, text='LayoutFixer v1.0.0',
-                     font=ctk.CTkFont(size=11), text_color='gray').pack(pady=(8, 2))
-
-        ctk.CTkButton(
-            parent, text='Reset All Settings', fg_color='#dc2626', hover_color='#b91c1c',
-            command=self._reset_all,
-        ).pack(pady=(4, 16))
-
-    # ------------------------------------------------------------------
     # Save / Reset
     # ------------------------------------------------------------------
 
@@ -200,10 +239,9 @@ class SettingsWindow(ctk.CTkToplevel):
         s = self._settings
 
         # General tab
-        old_hotkey = s.get('hotkey')
-        s['hotkey'] = self._hotkey_var.get()
         s['auto_switch_layout'] = self._auto_switch_var.get()
         s['show_notifications'] = self._notifications_var.get()
+        s['theme'] = self._theme_var.get().lower()
 
         # Handle start-with-Windows toggle
         import autostart
@@ -215,6 +253,10 @@ class SettingsWindow(ctk.CTkToplevel):
                 autostart.disable()
         s['start_with_windows'] = new_autostart
 
+        # Hotkey tab
+        old_hotkey = s.get('hotkey')
+        s['hotkey'] = self._hotkey_var.get()
+
         # Key Map tab
         custom_keymap: dict[str, str] = {}
         for en_key, entry in self._keymap_entries:
@@ -222,10 +264,6 @@ class SettingsWindow(ctk.CTkToplevel):
             if val and val != EN_TO_HE.get(en_key, ''):
                 custom_keymap[en_key] = val
         s['custom_keymap'] = custom_keymap
-
-        # Advanced tab
-        s['clipboard_delay_ms'] = int(self._delay_var.get())
-        s['debug_log'] = self._debug_var.get()
 
         settings_manager.save(s)
 
@@ -237,16 +275,16 @@ class SettingsWindow(ctk.CTkToplevel):
 
     def _reset_all(self):
         self._settings = settings_manager.reset()
+        listener = self._listener
         self.destroy()
-        # Re-open fresh
-        SettingsWindow(listener=self._listener)
+        open_settings(listener=listener)
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
     def _sep(self, parent):
-        ctk.CTkFrame(parent, height=1, fg_color='gray30').pack(fill='x', padx=16, pady=8)
+        ctk.CTkFrame(parent, height=1, fg_color=OUTLINE_VAR).pack(fill='x', padx=16, pady=8)
 
     def _toggle_row(self, parent, label: str, var: tk.BooleanVar, subtitle: str = ''):
         frame = ctk.CTkFrame(parent, fg_color='transparent')
@@ -255,16 +293,22 @@ class SettingsWindow(ctk.CTkToplevel):
         text_frame = ctk.CTkFrame(frame, fg_color='transparent')
         text_frame.pack(side='left', fill='x', expand=True)
 
-        ctk.CTkLabel(text_frame, text=label,
-                     font=ctk.CTkFont(size=11, weight='bold')).pack(anchor='w')
+        ctk.CTkLabel(
+            text_frame, text=label,
+            font=ctk.CTkFont(family='Segoe UI', size=11, weight='bold'),
+        ).pack(anchor='w')
         if subtitle:
-            ctk.CTkLabel(text_frame, text=subtitle,
-                         font=ctk.CTkFont(size=10), text_color='gray').pack(anchor='w')
+            ctk.CTkLabel(
+                text_frame, text=subtitle,
+                font=ctk.CTkFont(family='Segoe UI', size=10),
+                text_color=ON_SURFACE_VAR,
+            ).pack(anchor='w')
 
         ctk.CTkSwitch(
             frame, text='', variable=var,
             onvalue=True, offvalue=False,
-            button_color=ACCENT, progress_color=ACCENT,
+            button_color=PRIMARY, progress_color=PRIMARY,
+            button_hover_color=PRIMARY_HOVER, fg_color=OUTLINE_VAR,
         ).pack(side='right')
 
 
@@ -273,7 +317,7 @@ class SettingsWindow(ctk.CTkToplevel):
 # ---------------------------------------------------------------------------
 
 _window_instance: SettingsWindow | None = None
-_window_lock = threading.Lock()
+_window_lock = threading.RLock()
 
 
 def open_settings(listener=None) -> None:

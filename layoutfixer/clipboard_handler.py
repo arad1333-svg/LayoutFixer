@@ -199,10 +199,9 @@ def run_conversion() -> None:
             return
 
         # 5. Convert
-        direction = convert.__module__  # warm module cache
         from converter import _detect_direction
         detected_direction = _detect_direction(text)
-        converted = convert(text, 'auto', custom_keymap=custom_keymap)
+        converted = convert(text, detected_direction, custom_keymap=custom_keymap)
 
         if converted == text:
             log.debug('Converted text is identical to original — no change')
@@ -229,7 +228,10 @@ def run_conversion() -> None:
 
     finally:
         # 9. Always restore original clipboard
-        _restore_clipboard(saved_clipboard)
+        try:
+            _restore_clipboard(saved_clipboard)
+        except Exception:
+            log.debug('restore clipboard failed', exc_info=True)
         with _lock:
             _converting = False
 

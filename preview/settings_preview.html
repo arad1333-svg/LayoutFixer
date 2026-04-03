@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LayoutFixer Settings — Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ── Kinetic Terminal tokens ─────────────────────────── */
+  :root {
+    --primary:            #8eff71;
+    --primary-hover:      #2ff801;
+    --on-primary:         #064200;
+    --surface:            #0e0e0e;
+    --surface-low:        #131313;
+    --surface-container:  #1a1919;
+    --surface-high:       #201f1f;
+    --surface-bright:     #2c2c2c;
+    --on-surface:         #ffffff;
+    --on-surface-var:     #adaaaa;
+    --outline:            #777575;
+    --outline-var:        #494847;
+    --error:              #ff7351;
+    --error-hover:        #e05a3a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    color: var(--on-surface);
+  }
+
+  /* ── Window chrome ───────────────────────────────────── */
+  .window {
+    width: 500px;
+    background: var(--surface);
+    border-radius: 12px;
+    border: 1px solid var(--outline-var);
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.8), 0 0 0 1px rgba(142,255,113,0.05);
+  }
+
+  .title-bar {
+    background: var(--surface-low);
+    padding: 0 0 0 12px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--outline-var);
+    user-select: none;
+    height: 32px;
+  }
+
+  .title-bar span {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--on-surface-var);
+    letter-spacing: 0.02em;
+    flex: 1;
+  }
+
+  .win-controls {
+    display: flex;
+    height: 100%;
+  }
+
+  .win-btn {
+    width: 46px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: var(--on-surface-var);
+    font-size: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s;
+  }
+
+  .win-btn:hover { background: var(--surface-high); color: var(--on-surface); }
+  .win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+  /* ── Tab nav ─────────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    background: var(--surface-low);
+    padding: 8px 16px 0;
+    gap: 2px;
+  }
+
+  .tab-btn {
+    background: transparent;
+    border: none;
+    border-radius: 6px 6px 0 0;
+    color: var(--on-surface-var);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+  }
+
+  .tab-btn:hover {
+    background: var(--surface-high);
+    color: var(--on-surface);
+  }
+
+  .tab-btn.active {
+    background: var(--surface-container);
+    color: var(--primary);
+  }
+
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 12px; right: 12px;
+    height: 2px;
+    background: var(--primary);
+    border-radius: 2px 2px 0 0;
+  }
+
+  /* ── Tab content ─────────────────────────────────────── */
+  .tab-content {
+    background: var(--surface-container);
+    padding: 0;
+    display: none;
+  }
+  .tab-content.active { display: block; }
+
+  .tab-inner {
+    padding: 0 16px 16px;
+  }
+
+  /* ── Section label ───────────────────────────────────── */
+  .section-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--on-surface-var);
+    padding: 20px 0 8px;
+  }
+
+  /* ── Radio group ─────────────────────────────────────── */
+  .radio-group { display: flex; flex-direction: column; gap: 6px; padding: 0 8px; }
+
+  .radio-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 4px 0;
+  }
+
+  .radio-row input[type="radio"] { display: none; }
+
+  .radio-dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--outline-var);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.15s;
+  }
+
+  .radio-row input:checked + .radio-dot {
+    border-color: var(--primary);
+  }
+
+  .radio-row input:checked + .radio-dot::after {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+
+  .radio-row label {
+    font-size: 13px;
+    color: var(--on-surface);
+    cursor: pointer;
+  }
+
+  /* ── Divider (minimal, uses tonal shift) ─────────────── */
+  .divider {
+    height: 1px;
+    background: var(--outline-var);
+    opacity: 0.35;
+    margin: 14px 0;
+  }
+
+  /* ── Toggle row ──────────────────────────────────────── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+  }
+
+  .toggle-info { flex: 1; }
+
+  .toggle-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--on-surface);
+  }
+
+  .toggle-sub {
+    font-size: 10px;
+    color: var(--on-surface-var);
+    margin-top: 2px;
+  }
+
+  /* Toggle switch */
+  .switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+  .switch input { display: none; }
+
+  .switch-track {
+    position: absolute; inset: 0;
+    background: var(--outline-var);
+    border-radius: 11px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .switch-track::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--on-surface-var);
+    transition: transform 0.2s, background 0.2s;
+  }
+
+  .switch input:checked + .switch-track {
+    background: var(--primary);
+  }
+
+  .switch input:checked + .switch-track::after {
+    transform: translateX(18px);
+    background: var(--on-primary);
+  }
+
+  /* ── Buttons ─────────────────────────────────────────── */
+  .btn {
+    border: none;
+    border-radius: 6px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 10px 28px;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  .btn:active { transform: scale(0.98); }
+
+  .btn-primary {
+    background: var(--primary);
+    color: var(--on-primary);
+  }
+  .btn-primary:hover { background: var(--primary-hover); }
+
+  .btn-secondary {
+    background: var(--surface-high);
+    color: var(--on-surface-var);
+    border: 1px solid var(--outline-var);
+    font-size: 12px;
+    padding: 8px 20px;
+  }
+  .btn-secondary:hover { background: var(--surface-bright); color: var(--on-surface); }
+
+  .btn-danger {
+    background: var(--error);
+    color: #fff;
+    font-size: 12px;
+    padding: 8px 20px;
+  }
+  .btn-danger:hover { background: var(--error-hover); }
+
+  .btn-row {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 4px;
+  }
+
+  /* ── Key Map tab ─────────────────────────────────────── */
+  .keymap-hint {
+    font-size: 11px;
+    color: var(--on-surface-var);
+    text-align: center;
+    padding: 14px 0 8px;
+  }
+
+  .keymap-scroll {
+    background: var(--surface-low);
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  .keymap-scroll::-webkit-scrollbar { width: 6px; }
+  .keymap-scroll::-webkit-scrollbar-track { background: var(--surface-low); }
+  .keymap-scroll::-webkit-scrollbar-thumb { background: var(--outline-var); border-radius: 3px; }
+
+  .keymap-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 8px 16px;
+    background: var(--surface-high);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--on-surface-var);
+    position: sticky; top: 0;
+  }
+
+  .keymap-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 5px 16px;
+    align-items: center;
+    border-bottom: 1px solid rgba(73,72,71,0.3);
+  }
+
+  .keymap-row:nth-child(odd)  { background: var(--surface-low); }
+  .keymap-row:nth-child(even) { background: var(--surface-container); }
+
+  .keymap-en {
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    color: var(--on-surface-var);
+  }
+
+  .keymap-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--outline-var);
+    color: var(--on-surface);
+    font-size: 15px;
+    text-align: center;
+    width: 60px;
+    padding: 2px 4px;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+
+  .keymap-input:focus { border-bottom-color: var(--primary); }
+
+  .keymap-btn-row {
+    display: flex;
+    justify-content: center;
+    padding: 10px 0 4px;
+  }
+
+  /* ── Advanced tab ────────────────────────────────────── */
+  .slider-row { padding: 4px 0 8px; }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+
+  .slider-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px;
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--outline-var);
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(142,255,113,0.4);
+  }
+
+  .slider-hint {
+    font-size: 10px;
+    color: var(--on-surface-var);
+    margin-top: 6px;
+  }
+
+  .version-chip {
+    display: inline-block;
+    background: var(--surface-bright);
+    color: var(--on-surface-var);
+    font-size: 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: 0.06em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin: 8px auto;
+  }
+
+  .adv-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 4px;
+  }
+
+  /* ── Preview note banner ─────────────────────────────── */
+  .preview-note {
+    background: rgba(142,255,113,0.08);
+    border: 1px solid rgba(142,255,113,0.2);
+    border-radius: 8px;
+    text-align: center;
+    padding: 10px 20px;
+    font-size: 11px;
+    color: var(--primary);
+    margin-top: 20px;
+    letter-spacing: 0.03em;
+  }
+</style>
+</head>
+<body>
+
+<div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+
+  <!-- Window -->
+  <div class="window">
+
+    <!-- Title bar (Windows style) -->
+    <div class="title-bar">
+      <span>LayoutFixer Settings</span>
+      <div class="win-controls">
+        <button class="win-btn">&#x2500;</button>
+        <button class="win-btn">&#x25A1;</button>
+        <button class="win-btn close">&#x2715;</button>
+      </div>
+    </div>
+
+    <!-- Tabs nav -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showTab('general', this)">General</button>
+      <button class="tab-btn" onclick="showTab('hotkey', this)">Hotkey</button>
+      <button class="tab-btn" onclick="showTab('keymap', this)">Key Map</button>
+    </div>
+
+    <!-- ── TAB: GENERAL ─────────────────────────────────── -->
+    <div id="tab-general" class="tab-content active">
+      <div class="tab-inner">
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-label">Auto-Switch Layout</div>
+            <div class="toggle-sub">After converting, switch keyboard language to match.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" checked>
+            <div class="switch-track"></div>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-label">Start with Windows</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox">
+            <div class="switch-track"></div>
+          </label>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-label">Show Notifications</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" checked>
+            <div class="switch-track"></div>
+          </label>
+        </div>
+
+        <div class="divider"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary">Save</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── TAB: HOTKEY ──────────────────────────────────── -->
+    <div id="tab-hotkey" class="tab-content">
+      <div class="tab-inner">
+
+        <div class="section-label">Activation Hotkey</div>
+        <div class="radio-group">
+          <label class="radio-row">
+            <input type="radio" name="hotkey" checked>
+            <div class="radio-dot"></div>
+            <label>Ctrl + Alt + X &nbsp;<span style="color:var(--on-surface-var);font-size:11px;">(recommended)</span></label>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="hotkey">
+            <div class="radio-dot"></div>
+            <label>Ctrl + Alt + Z</label>
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="hotkey">
+            <div class="radio-dot"></div>
+            <label>Ctrl + Alt + F</label>
+          </label>
+        </div>
+
+        <div class="divider"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary">Save</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── TAB: KEY MAP ──────────────────────────────────── -->
+    <div id="tab-keymap" class="tab-content">
+      <div class="tab-inner">
+
+        <div class="keymap-hint">Click a cell and type a new character to remap.</div>
+
+        <div class="keymap-scroll">
+          <div class="keymap-header">
+            <span>EN Key</span>
+            <span>HE Char</span>
+          </div>
+          <!-- Rows (a representative sample) -->
+          <div class="keymap-row"><span class="keymap-en">'a'</span><input class="keymap-input" value="ש" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'b'</span><input class="keymap-input" value="נ" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'c'</span><input class="keymap-input" value="ב" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'d'</span><input class="keymap-input" value="ג" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'e'</span><input class="keymap-input" value="ק" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'f'</span><input class="keymap-input" value="כ" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'g'</span><input class="keymap-input" value="ע" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'h'</span><input class="keymap-input" value="י" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'i'</span><input class="keymap-input" value="ן" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'j'</span><input class="keymap-input" value="ח" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'k'</span><input class="keymap-input" value="ל" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'l'</span><input class="keymap-input" value="ך" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'m'</span><input class="keymap-input" value="צ" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'n'</span><input class="keymap-input" value="מ" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'o'</span><input class="keymap-input" value="ם" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'p'</span><input class="keymap-input" value="פ" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'q'</span><input class="keymap-input" value="/" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'r'</span><input class="keymap-input" value="ר" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'s'</span><input class="keymap-input" value="ד" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'t'</span><input class="keymap-input" value="א" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'u'</span><input class="keymap-input" value="ו" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'v'</span><input class="keymap-input" value="ה" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'w'</span><input class="keymap-input" value="'" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'x'</span><input class="keymap-input" value="ס" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'y'</span><input class="keymap-input" value="ט" maxlength="1"></div>
+          <div class="keymap-row"><span class="keymap-en">'z'</span><input class="keymap-input" value="ז" maxlength="1"></div>
+        </div>
+
+        <div class="keymap-btn-row">
+          <button class="btn btn-secondary">Reset to Defaults</button>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /window -->
+
+  <div class="preview-note">
+    HTML preview — visual approximation of the redesigned settings window
+  </div>
+
+</div>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
