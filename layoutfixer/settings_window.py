@@ -39,6 +39,186 @@ ERROR_HOVER       = '#e05a3a'
 WIN_W, WIN_H = 500, 560
 
 
+class AnimatedSwitch(tk.Canvas):
+    """Animated pill-shaped toggle. Replaces ctk.CTkSwitch."""
+
+    _TRACK_W = 52
+    _TRACK_H = 22
+    _KNOB_D  = 16
+    _MARGIN  = 3
+    _ANIM_MS = 180
+    _TICK_MS = 16    # ~60 fps
+
+    def __init__(self, parent, variable: tk.BooleanVar, **kwargs):
+        super().__init__(
+            parent,
+            width=self._TRACK_W, height=self._TRACK_H,
+            bd=0, highlightthickness=0,
+            bg=SURFACE_CONTAINER, cursor='hand2',
+        )
+        self._var     = variable
+        self._anim_id = None
+        self._knob_r  = self._KNOB_D // 2                            # 8
+        self._x_off   = self._MARGIN + self._knob_r                  # 11
+        self._x_on    = self._TRACK_W - self._MARGIN - self._knob_r  # 41
+        self._knob_y  = self._TRACK_H // 2                           # 11
+
+        self._current_knob_x = self._x_on if variable.get() else self._x_off
+        self._render(self._current_knob_x)
+
+        self.bind('<Button-1>', self._on_click)
+        self._var.trace_add('write', self._on_var_changed)
+
+    def _on_click(self, _event=None):
+        self._var.set(not self._var.get())
+
+    def _on_var_changed(self, *_):
+        self._start_animation(self._var.get())
+
+    def _start_animation(self, target_state: bool):
+        import time
+        if self._anim_id is not None:
+            self.after_cancel(self._anim_id)
+            self._anim_id = None
+        self._anim_start_x  = self._current_knob_x
+        self._anim_target_x = self._x_on if target_state else self._x_off
+        self._anim_start_t  = time.perf_counter()
+        self._tick()
+
+    def _tick(self):
+        import time
+        elapsed = (time.perf_counter() - self._anim_start_t) * 1000
+        t     = min(elapsed / self._ANIM_MS, 1.0)
+        eased = t * t * (3.0 - 2.0 * t)    # smoothstep ease-in-out
+        cx    = self._anim_start_x + eased * (self._anim_target_x - self._anim_start_x)
+        self._render(cx)
+        if t < 1.0:
+            self._anim_id = self.after(self._TICK_MS, self._tick)
+        else:
+            self._anim_id = None
+
+    def _render(self, knob_cx: float):
+        self._current_knob_x = knob_cx
+        self.delete('all')
+        state      = self._var.get()
+        tw, th     = self._TRACK_W, self._TRACK_H
+        r          = th // 2    # 11 — full pill
+        track_fill = PRIMARY    if state else SURFACE_HIGH
+        knob_fill  = ON_PRIMARY if state else ON_SURFACE_VAR
+        self._pill(0, 0, tw, th, r, fill=track_fill, outline=OUTLINE_VAR)
+        kr = self._knob_r
+        self.create_oval(
+            knob_cx - kr, self._knob_y - kr,
+            knob_cx + kr, self._knob_y + kr,
+            fill=knob_fill, outline='',
+        )
+
+    def _pill(self, x1, y1, x2, y2, r, fill, outline):
+        """Filled pill shape with a 1-px border, no seam artifacts."""
+        fk = dict(fill=fill, outline='')
+        self.create_arc(x1,     y1,     x1+2*r, y1+2*r, start= 90, extent=90, style='pieslice', **fk)
+        self.create_arc(x2-2*r, y1,     x2,     y1+2*r, start=  0, extent=90, style='pieslice', **fk)
+        self.create_arc(x1,     y2-2*r, x1+2*r, y2,     start=180, extent=90, style='pieslice', **fk)
+        self.create_arc(x2-2*r, y2-2*r, x2,     y2,     start=270, extent=90, style='pieslice', **fk)
+        self.create_rectangle(x1+r, y1, x2-r, y2, **fk)
+        self.create_rectangle(x1,   y1+r, x2, y2-r, **fk)
+        bk = dict(outline=outline, fill='')
+        self.create_arc(x1,     y1,     x1+2*r, y1+2*r, start= 90, extent=90, style='arc', **bk)
+        self.create_arc(x2-2*r, y1,     x2,     y1+2*r, start=  0, extent=90, style='arc', **bk)
+        self.create_arc(x1,     y2-2*r, x1+2*r, y2,     start=180, extent=90, style='arc', **bk)
+        self.create_arc(x2-2*r, y2-2*r, x2,     y2,     start=270, extent=90, style='arc', **bk)
+        self.create_line(x1+r, y1,   x2-r, y1,   fill=outline)
+        self.create_line(x1+r, y2,   x2-r, y2,   fill=outline)
+        self.create_line(x1,   y1+r, x1,   y2-r, fill=outline)
+        self.create_line(x2,   y1+r, x2,   y2-r, fill=outline)
+
+
+class LedRadioButton(tk.Canvas):
+    """Canvas-based LED Dot radio button indicator (22×22 px)."""
+
+    _SIZE      = 22
+    _RING_W    = 3
+    _DOT_D     = 8
+    _FLASH_MS  = 80
+    _SETTLE_MS = 180
+
+    def __init__(self, parent, variable: tk.StringVar, value: str, **kwargs):
+        super().__init__(
+            parent,
+            width=self._SIZE, height=self._SIZE,
+            bd=0, highlightthickness=0,
+            bg=SURFACE_CONTAINER, cursor='hand2',
+        )
+        self._var       = variable
+        self._value     = value
+        self._hovering  = False
+        self._flashing  = False
+        self._flash_id  = None
+        self._settle_id = None
+
+        self._render()
+        self.bind('<Button-1>', self._on_click)
+        self._var.trace_add('write', self._on_var_changed)
+
+    def set_hover(self, state: bool) -> None:
+        self._hovering = state
+        self._render()
+
+    def _on_click(self, _event=None) -> None:
+        if self._var.get() != self._value:
+            self._var.set(self._value)
+
+    def _on_var_changed(self, *_) -> None:
+        if self._var.get() == self._value:
+            self._start_flash()
+        else:
+            self._cancel_flash()
+            self._render()
+
+    def _start_flash(self) -> None:
+        self._cancel_flash()
+        self._flashing = True
+        self._render()
+        self._flash_id = self.after(self._FLASH_MS, self._end_flash_phase)
+
+    def _end_flash_phase(self) -> None:
+        self._flash_id = None
+        self._flashing = False
+        self._render()
+        self._settle_id = self.after(self._SETTLE_MS - self._FLASH_MS, self._clear_settle)
+
+    def _clear_settle(self) -> None:
+        self._settle_id = None
+
+    def _cancel_flash(self) -> None:
+        if self._flash_id is not None:
+            self.after_cancel(self._flash_id)
+            self._flash_id = None
+        if self._settle_id is not None:
+            self.after_cancel(self._settle_id)
+            self._settle_id = None
+        self._flashing = False
+
+    def _render(self) -> None:
+        self.delete('all')
+        selected = self._var.get() == self._value
+        s, half  = self._SIZE, self._SIZE / 2
+        rw       = self._RING_W
+
+        ring_color = (
+            (PRIMARY_HOVER if self._flashing else PRIMARY)
+            if selected else
+            (ON_SURFACE_VAR if self._hovering else OUTLINE_VAR)
+        )
+
+        self.create_oval(rw, rw, s - rw, s - rw, outline=ring_color, width=rw, fill='')
+
+        if selected:
+            r = self._DOT_D / 2
+            self.create_oval(half - r, half - r, half + r, half + r,
+                             fill=ON_PRIMARY, outline='')
+
+
 class SettingsWindow(ctk.CTkToplevel):
     """The settings window. Only one instance should exist at a time."""
 
@@ -211,13 +391,21 @@ class SettingsWindow(ctk.CTkToplevel):
             value=s.get('hotkey', settings_manager.DEFAULTS['hotkey'])
         )
         for label, value in HOTKEY_OPTIONS:
-            ctk.CTkRadioButton(
-                parent, text=label, variable=self._hotkey_var, value=value,
-                fg_color=PRIMARY, border_color=OUTLINE_VAR, hover_color=PRIMARY_HOVER,
-                font=ctk.CTkFont(family='Segoe UI', size=12),
-                radiobutton_width=18, radiobutton_height=18,
-                border_width_checked=2, border_width_unchecked=2,
-            ).pack(anchor='w', padx=24, pady=4)
+            row = tk.Frame(parent, bg=SURFACE_CONTAINER, cursor='hand2')
+            row.pack(anchor='w', padx=24, pady=4)
+
+            led = LedRadioButton(row, variable=self._hotkey_var, value=value)
+            led.pack(side='left')
+
+            lbl = tk.Label(row, text=label, bg=SURFACE_CONTAINER, fg=ON_SURFACE,
+                           font=('Segoe UI', 12), cursor='hand2')
+            lbl.pack(side='left', padx=(8, 0))
+
+            lbl.bind('<Button-1>', led._on_click)
+            row.bind('<Button-1>', led._on_click)
+            for widget in (row, led, lbl):
+                widget.bind('<Enter>', lambda _e, l=led: l.set_hover(True))
+                widget.bind('<Leave>', lambda _e, l=led: l.set_hover(False))
 
         self._sep(parent)
 
@@ -388,14 +576,7 @@ class SettingsWindow(ctk.CTkToplevel):
                 text_color=ON_SURFACE_VAR,
             ).pack(anchor='w')
 
-        ctk.CTkSwitch(
-            frame, text='', variable=var,
-            onvalue=True, offvalue=False,
-            button_color=PRIMARY, progress_color=PRIMARY,
-            button_hover_color=PRIMARY_HOVER, fg_color=OUTLINE_VAR,
-            switch_width=46, switch_height=24, button_length=20,
-            corner_radius=12,
-        ).pack(side='right')
+        AnimatedSwitch(frame, variable=var).pack(side='right', pady=1)
 
 
 # ---------------------------------------------------------------------------
