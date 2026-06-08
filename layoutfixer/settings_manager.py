@@ -1,9 +1,14 @@
 """
-settings_manager.py - Load/save app settings to %APPDATA%/LayoutFixer/settings.json.
+settings_manager.py - Load/save app settings to platform-appropriate location.
+
+Windows: %APPDATA%/LayoutFixer/settings.json
+macOS:   ~/Library/Application Support/LayoutFixer/settings.json
 """
 import json
 import os
 from pathlib import Path
+
+from plat import get_settings_dir
 
 APP_NAME = 'LayoutFixer'
 
@@ -20,8 +25,7 @@ DEFAULTS: dict = {
 
 
 def _settings_path() -> Path:
-    appdata = os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming')
-    return Path(appdata) / APP_NAME / 'settings.json'
+    return get_settings_dir() / 'settings.json'
 
 
 def load() -> dict:

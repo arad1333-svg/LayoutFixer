@@ -2,6 +2,7 @@
 tray_app.py — System tray icon and context menu using pystray.
 """
 import logging
+import sys
 import threading
 from pathlib import Path
 
@@ -91,6 +92,7 @@ def _build_menu(listener, settings: dict, on_settings: callable, on_quit: callab
 
     import autostart
     status_label = 'Active (click to Suspend)' if not listener.is_suspended else 'Suspended (click to Resume)'
+    autostart_label = 'Start at Login' if sys.platform == 'darwin' else 'Start with Windows'
 
     return pystray.Menu(
         pystray.MenuItem('Open Settings', lambda icon, item: on_settings()),
@@ -98,7 +100,7 @@ def _build_menu(listener, settings: dict, on_settings: callable, on_quit: callab
         pystray.MenuItem(status_label, toggle_suspend),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(
-            'Start with Windows',
+            autostart_label,
             toggle_autostart,
             checked=lambda item: autostart.is_enabled(),
         ),

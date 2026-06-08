@@ -3,6 +3,7 @@ settings_window.py — customtkinter settings UI with three tabs:
   General | Hotkey | Key Map
 """
 import logging
+import sys
 import threading
 import tkinter as tk
 
@@ -327,9 +328,10 @@ class SettingsWindow(ctk.CTkToplevel):
         self._toggle_row(parent, 'AUTO-SWITCH LAYOUT', self._auto_switch_var,
                          subtitle='After converting, switch keyboard language to match.')
 
-        # Toggle: start with Windows
+        # Toggle: start at login (label differs by platform)
         self._start_windows_var = tk.BooleanVar(value=s.get('start_with_windows', False))
-        self._toggle_row(parent, 'START WITH WINDOWS', self._start_windows_var)
+        login_label = 'START AT LOGIN' if sys.platform == 'darwin' else 'START WITH WINDOWS'
+        self._toggle_row(parent, login_label, self._start_windows_var)
 
         # Toggle: show notifications
         self._notifications_var = tk.BooleanVar(value=s.get('show_notifications', True))
@@ -387,25 +389,37 @@ class SettingsWindow(ctk.CTkToplevel):
             text_color=ON_SURFACE_VAR,
         ).pack(anchor='w', padx=16, pady=(20, 4))
 
-        self._hotkey_var = tk.StringVar(
-            value=s.get('hotkey', settings_manager.DEFAULTS['hotkey'])
-        )
-        for label, value in HOTKEY_OPTIONS:
-            row = tk.Frame(parent, bg=SURFACE_CONTAINER, cursor='hand2')
-            row.pack(anchor='w', padx=24, pady=4)
+        if sys.platform == 'darwin':
+            # macOS: trigger is always Globe double-tap — no user choice needed
+            ctk.CTkLabel(
+                parent,
+                text='Double-tap Globe (\U0001f310) to convert',
+                font=ctk.CTkFont(family='Segoe UI', size=13),
+                text_color=ON_SURFACE,
+            ).pack(anchor='w', padx=24, pady=(8, 16))
+            self._hotkey_var = tk.StringVar(
+                value=s.get('hotkey', settings_manager.DEFAULTS['hotkey'])
+            )
+        else:
+            self._hotkey_var = tk.StringVar(
+                value=s.get('hotkey', settings_manager.DEFAULTS['hotkey'])
+            )
+            for label, value in HOTKEY_OPTIONS:
+                row = tk.Frame(parent, bg=SURFACE_CONTAINER, cursor='hand2')
+                row.pack(anchor='w', padx=24, pady=4)
 
-            led = LedRadioButton(row, variable=self._hotkey_var, value=value)
-            led.pack(side='left')
+                led = LedRadioButton(row, variable=self._hotkey_var, value=value)
+                led.pack(side='left')
 
-            lbl = tk.Label(row, text=label, bg=SURFACE_CONTAINER, fg=ON_SURFACE,
-                           font=('Segoe UI', 12), cursor='hand2')
-            lbl.pack(side='left', padx=(8, 0))
+                lbl = tk.Label(row, text=label, bg=SURFACE_CONTAINER, fg=ON_SURFACE,
+                               font=('Segoe UI', 12), cursor='hand2')
+                lbl.pack(side='left', padx=(8, 0))
 
-            lbl.bind('<Button-1>', led._on_click)
-            row.bind('<Button-1>', led._on_click)
-            for widget in (row, led, lbl):
-                widget.bind('<Enter>', lambda _e, l=led: l.set_hover(True))
-                widget.bind('<Leave>', lambda _e, l=led: l.set_hover(False))
+                lbl.bind('<Button-1>', led._on_click)
+                row.bind('<Button-1>', led._on_click)
+                for widget in (row, led, lbl):
+                    widget.bind('<Enter>', lambda _e, l=led: l.set_hover(True))
+                    widget.bind('<Leave>', lambda _e, l=led: l.set_hover(False))
 
         self._sep(parent)
 

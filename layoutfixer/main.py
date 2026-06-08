@@ -7,29 +7,12 @@ Responsibilities:
   3. Start hotkey listener
   4. Start system tray (blocks until Exit is chosen)
 """
-import ctypes
 import logging
-import os
 import sys
 import threading
 from pathlib import Path
 
-
-# ---------------------------------------------------------------------------
-# Single-instance mutex
-# ---------------------------------------------------------------------------
-
-_MUTEX_NAME = 'LayoutFixer_SingleInstance_Mutex'
-_mutex_handle = None
-
-
-def _acquire_mutex() -> bool:
-    """Return True if this is the first instance, False if already running."""
-    global _mutex_handle
-    _mutex_handle = ctypes.windll.kernel32.CreateMutexW(None, False, _MUTEX_NAME)
-    last_error = ctypes.windll.kernel32.GetLastError()
-    ERROR_ALREADY_EXISTS = 183
-    return last_error != ERROR_ALREADY_EXISTS
+from plat import acquire_mutex, show_already_running_dialog, get_log_dir
 
 
 # ---------------------------------------------------------------------------
@@ -37,8 +20,7 @@ def _acquire_mutex() -> bool:
 # ---------------------------------------------------------------------------
 
 def _setup_logging(debug: bool = False) -> None:
-    appdata = os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming')
-    log_dir = Path(appdata) / 'LayoutFixer'
+    log_dir = get_log_dir()
     log_dir.mkdir(parents=True, exist_ok=True)
 
     handlers: list[logging.Handler] = []
@@ -69,13 +51,8 @@ def _setup_logging(debug: bool = False) -> None:
 
 def main() -> None:
     # 1. Single-instance check
-    if not _acquire_mutex():
-        ctypes.windll.user32.MessageBoxW(
-            0,
-            'LayoutFixer is already running.\nCheck the system tray.',
-            'LayoutFixer',
-            0x40,  # MB_ICONINFORMATION
-        )
+    if not acquire_mutex():
+        show_already_running_dialog()
         sys.exit(0)
 
     # 2. Load settings
@@ -99,7 +76,21 @@ def main() -> None:
     __main__._tk_root = tk.Tk()
     __main__._tk_root.withdraw()
 
-    # 6. Start hotkey listener
+    # 6. macOS: check Accessibility permission (hotkeys won't work without it)
+    if sys.platform == 'darwin':
+        from plat import check_accessibility_permission
+        import tkinter.messagebox
+        if not check_accessibility_permission():
+            tkinter.messagebox.showwarning(
+                'LayoutFixer — Permission Required',
+                'LayoutFixer needs Accessibility access to work.\n\n'
+                '1. Open System Settings > Privacy & Security > Accessibility\n'
+                '2. Enable LayoutFixer\n'
+                '3. Restart LayoutFixer\n\n'
+                'Hotkeys will NOT work until permission is granted.',
+            )
+
+    # 7. Start hotkey listener
     from hotkey_listener import HotkeyListener
     from clipboard_handler import run_conversion
 
@@ -108,7 +99,7 @@ def main() -> None:
     listener.start()
     log.info('Hotkey listener started: %s', hotkey)
 
-    # 7. Define tray callbacks
+    # 8. Define tray callbacks
     def on_open_settings():
         from settings_window import open_settings
         open_settings(listener=listener)
@@ -121,7 +112,7 @@ def main() -> None:
             tray_app._tray_icon.stop()
         __main__._tk_root.quit()
 
-    # 8. Run tray in a background thread (it blocks until stopped)
+    # 9. Run tray in a background thread (it blocks until stopped)
     import tray_app
 
     tray_thread = threading.Thread(
@@ -132,7 +123,7 @@ def main() -> None:
     )
     tray_thread.start()
 
-    # 9. Run Tk event loop on the main thread (required by tkinter)
+    # 10. Run Tk event loop on the main thread (required by tkinter)
     try:
         __main__._tk_root.mainloop()
     except KeyboardInterrupt:
