@@ -69,21 +69,26 @@ def release_hotkey_modifiers() -> None:
     """
     Release Cmd, Option, Shift, Ctrl modifier keys after the Globe double-tap.
 
-    Key-up events are injected for each modifier so they don't bleed into
-    the subsequent Cmd+C simulation.
+    Key-up events are injected at kCGSessionEventTap so they bypass any
+    active HID-level event taps and reach the focused app directly.
     """
     try:
         import Quartz  # type: ignore[import]
         # Virtual key codes: Cmd=55, Option=58, Shift=56, Ctrl=59
         for vk in (55, 58, 56, 59):
             event = Quartz.CGEventCreateKeyboardEvent(None, vk, False)  # key-up
-            Quartz.CGEventPost(Quartz.kCGHIDEventTap, event)
+            Quartz.CGEventPost(Quartz.kCGSessionEventTap, event)
     except Exception:
         log.exception('release_hotkey_modifiers failed')
 
 
 def _send_cmd_key(key_vk: int) -> None:
-    """Simulate Cmd+key via CGEventPost."""
+    """Simulate Cmd+key via CGEventPost at kCGSessionEventTap.
+
+    Using kCGSessionEventTap (not kCGHIDEventTap) ensures the event bypasses
+    any active HID-level keyboard taps and is delivered directly to the focused
+    application.
+    """
     try:
         import Quartz  # type: ignore[import]
         kCGEventFlagMaskCommand = Quartz.kCGEventFlagMaskCommand
@@ -91,12 +96,12 @@ def _send_cmd_key(key_vk: int) -> None:
         # key down
         ev_down = Quartz.CGEventCreateKeyboardEvent(None, key_vk, True)
         Quartz.CGEventSetFlags(ev_down, kCGEventFlagMaskCommand)
-        Quartz.CGEventPost(Quartz.kCGHIDEventTap, ev_down)
+        Quartz.CGEventPost(Quartz.kCGSessionEventTap, ev_down)
 
         # key up
         ev_up = Quartz.CGEventCreateKeyboardEvent(None, key_vk, False)
         Quartz.CGEventSetFlags(ev_up, kCGEventFlagMaskCommand)
-        Quartz.CGEventPost(Quartz.kCGHIDEventTap, ev_up)
+        Quartz.CGEventPost(Quartz.kCGSessionEventTap, ev_up)
     except Exception:
         log.exception('_send_cmd_key(%d) failed', key_vk)
 

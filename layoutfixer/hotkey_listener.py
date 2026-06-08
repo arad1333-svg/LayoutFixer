@@ -25,19 +25,22 @@ class GlobeTapListener:
     """
     Detects double-tap of the Globe key (🌐) on macOS and runs a callback.
 
-    Single-tap behaviour: after the double-tap window expires (350 ms) the
-    Globe press is re-injected via Quartz so macOS still switches the input
-    source normally.
+    Uses suppress=False — all keys pass through the OS normally.
+    Single-tap: Globe switches input source as usual (OS handles it).
+    Double-tap (two presses within 350 ms): conversion callback is run.
 
-    Double-tap behaviour: both presses are suppressed and the conversion
-    callback is run instead.
+    On double-tap the input source flips twice (cancels out) before conversion
+    runs, so the layout ends up in the same state as before the double-tap.
+    The conversion then switches to the correct layout as needed.
 
-    Note: requires Accessibility permission (pynput suppress=True).
+    Note: requires Accessibility permission so pynput can receive key events
+    from other applications.
+
+    PHASE 1: confirm _GLOBE_VK on your hardware with tools/detect_globe_key.py
     """
 
     _DOUBLE_TAP_MS = 350
-    # Globe key virtual keycode on Apple keyboards.
-    # Confirmed value on most Apple keyboards — verify on Phase 1 hardware.
+    # Globe key virtual keycode on Apple keyboards — verify with detect_globe_key.py
     _GLOBE_VK = 63
 
     def __init__(self, callback: Callable[[], None]) -> None:
@@ -45,14 +48,13 @@ class GlobeTapListener:
         self._listener: keyboard.Listener | None = None
         self._lock = threading.Lock()
         self._last_tap: float = 0.0
-        self._pending_reinject: threading.Timer | None = None
 
     def start(self) -> None:
         with self._lock:
             self._stop_listener()
             self._listener = keyboard.Listener(
                 on_press=self._on_press,
-                suppress=True,
+                suppress=False,
             )
             self._listener.start()
             log.info('GlobeTapListener started (Globe vk=%d)', self._GLOBE_VK)
@@ -60,9 +62,6 @@ class GlobeTapListener:
     def stop(self) -> None:
         with self._lock:
             self._stop_listener()
-            if self._pending_reinject:
-                self._pending_reinject.cancel()
-                self._pending_reinject = None
 
     def _stop_listener(self) -> None:
         if self._listener is None:
@@ -74,78 +73,24 @@ class GlobeTapListener:
             log.warning('GlobeTapListener stop error', exc_info=True)
         self._listener = None
 
-    def _on_press(self, key) -> bool | None:
-        """Called for every key press. Return False from suppress=True listener
-        to suppress the event; None / True to pass it through.
-
-        Because suppress=True suppresses ALL keys, we must re-inject
-        non-Globe keys manually.
-        """
-        # Check if this is the Globe key
-        is_globe = (
-            hasattr(key, 'vk') and key.vk == self._GLOBE_VK
-        )
-
+    def _on_press(self, key) -> None:
+        """Called for every key press. Only act on Globe key presses."""
+        is_globe = hasattr(key, 'vk') and key.vk == self._GLOBE_VK
         if not is_globe:
-            # Re-inject non-Globe key so the rest of the OS sees it
-            self._reinject_key(key)
-            return None  # allow (suppress=True means we need explicit pass-through)
+            return
 
         now = time.monotonic()
         with self._lock:
             elapsed_ms = (now - self._last_tap) * 1000
             if elapsed_ms <= self._DOUBLE_TAP_MS and self._last_tap > 0:
-                # Double-tap detected — cancel pending reinject, run conversion
-                if self._pending_reinject:
-                    self._pending_reinject.cancel()
-                    self._pending_reinject = None
+                # Double-tap detected — run conversion
                 self._last_tap = 0.0
                 log.debug('Globe double-tap detected — running conversion')
                 t = threading.Thread(target=self._callback, daemon=True, name='globe-callback')
                 t.start()
             else:
-                # First tap — schedule re-injection after timeout
+                # First tap — record time, let Globe pass through naturally
                 self._last_tap = now
-                if self._pending_reinject:
-                    self._pending_reinject.cancel()
-                delay = self._DOUBLE_TAP_MS / 1000
-                self._pending_reinject = threading.Timer(delay, self._do_reinject_globe)
-                self._pending_reinject.daemon = True
-                self._pending_reinject.start()
-
-        return None  # suppress (listener already has suppress=True)
-
-    def _do_reinject_globe(self) -> None:
-        """Re-inject the Globe key so macOS switches the input source."""
-        with self._lock:
-            self._pending_reinject = None
-            self._last_tap = 0.0
-        self._reinject_globe()
-
-    def _reinject_globe(self) -> None:
-        """Post a Globe key-down + key-up via Quartz CGEventPost."""
-        try:
-            import Quartz  # type: ignore[import]
-            ev_down = Quartz.CGEventCreateKeyboardEvent(None, self._GLOBE_VK, True)
-            Quartz.CGEventPost(Quartz.kCGHIDEventTap, ev_down)
-            ev_up = Quartz.CGEventCreateKeyboardEvent(None, self._GLOBE_VK, False)
-            Quartz.CGEventPost(Quartz.kCGHIDEventTap, ev_up)
-        except Exception:
-            log.exception('Globe key re-injection failed')
-
-    def _reinject_key(self, key) -> None:
-        """Re-inject a non-Globe key via Quartz (because suppress=True ate it)."""
-        try:
-            import Quartz  # type: ignore[import]
-            vk = getattr(key, 'vk', None)
-            if vk is None:
-                return
-            ev_down = Quartz.CGEventCreateKeyboardEvent(None, vk, True)
-            Quartz.CGEventPost(Quartz.kCGHIDEventTap, ev_down)
-            ev_up = Quartz.CGEventCreateKeyboardEvent(None, vk, False)
-            Quartz.CGEventPost(Quartz.kCGHIDEventTap, ev_up)
-        except Exception:
-            log.debug('Key re-injection failed for %r', key, exc_info=True)
 
 
 # ---------------------------------------------------------------------------
