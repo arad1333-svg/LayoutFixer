@@ -22,6 +22,15 @@ assert len(HE_TO_EN) == len(EN_TO_HE), (
     f"HE_TO_EN collision: {len(EN_TO_HE) - len(HE_TO_EN)} duplicate(s)"
 )
 
+# HE→EN-only extras for keys where the macOS Hebrew layout produces a
+# different character than the Windows (SI-1452) layout EN_TO_HE is based
+# on. Applied only inside convert() — they are one-way aliases (the EN→HE
+# side keeps the Windows character above), so they stay out of HE_TO_EN,
+# which remains a strict two-way inverse.
+HE_TO_EN_EXTRAS: dict[str, str] = {
+    '׳': 'w',   # macOS W key types U+05F3 HEBREW PUNCTUATION GERESH, not '
+}
+
 
 def _detect_direction(text: str) -> str:
     """
@@ -63,6 +72,7 @@ def convert(text: str, direction: str = 'auto', custom_keymap: dict[str, str] | 
     if custom_keymap:
         en_to_he.update(custom_keymap)
     he_to_en = {v: k for k, v in en_to_he.items()}
+    he_to_en.update(HE_TO_EN_EXTRAS)
 
     if direction == 'auto':
         direction = _detect_direction(text)

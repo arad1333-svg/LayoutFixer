@@ -78,19 +78,26 @@ def main() -> None:
     __main__._tk_root = tk.Tk()
     __main__._tk_root.withdraw()
 
-    # 6. macOS: check Accessibility permission (hotkeys won't work without it)
+    # 5b. macOS: Tk switches the process to the Regular activation policy,
+    # which puts a Dock icon up even though Info.plist has LSUIElement=true.
+    # Set it back to Accessory so LayoutFixer stays menu-bar-only.
     if sys.platform == 'darwin':
-        from plat import check_accessibility_permission
-        import tkinter.messagebox
-        if not check_accessibility_permission():
-            tkinter.messagebox.showwarning(
-                'LayoutFixer — Permission Required',
-                'LayoutFixer needs Accessibility access to work.\n\n'
-                '1. Open System Settings > Privacy & Security > Accessibility\n'
-                '2. Enable LayoutFixer\n'
-                '3. Restart LayoutFixer\n\n'
-                'Hotkeys will NOT work until permission is granted.',
-            )
+        try:
+            from AppKit import NSApplication
+            NSApplicationActivationPolicyAccessory = 1
+            NSApplication.sharedApplication().setActivationPolicy_(
+                NSApplicationActivationPolicyAccessory)
+        except Exception:
+            log.warning('Could not set Accessory activation policy', exc_info=True)
+
+    # 6. macOS: gate on Accessibility permission. The gate window polls until
+    # the permission is granted, so the listener below starts with live
+    # permission — no app restart needed. Returns False if the user quits.
+    if sys.platform == 'darwin':
+        from permission_gate import run_gate
+        if not run_gate(__main__._tk_root):
+            log.info('User quit at the permission gate')
+            sys.exit(0)
 
     # 7. Start hotkey listener
     from hotkey_listener import HotkeyListener

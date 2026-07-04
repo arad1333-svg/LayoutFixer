@@ -5,6 +5,7 @@ __pycache__/
 
 # PyInstaller build artifacts
 layoutfixer/build/layoutfixer/
+layoutfixer/build/layoutfixer_mac/
 layoutfixer/dist/
 
 # Claude Code local settings

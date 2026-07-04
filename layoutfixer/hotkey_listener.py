@@ -23,22 +23,40 @@ log = logging.getLogger(__name__)
 
 if sys.platform == 'darwin':
     import Quartz
+    from pynput._util.darwin import keycode_context
 
     class _KeyEventsOnlyListener(keyboard.Listener):
-        """keyboard.Listener without the NSSystemDefined (media-key) subscription.
+        """keyboard.Listener with two macOS 26 SIGTRAP workarounds.
 
-        pynput converts NSSystemDefined events via NSEvent.eventWithCGEvent_ on
-        its tap thread; on macOS 26 that conversion runs caps-lock/input-source
-        checks that must happen on the main dispatch queue, so pressing Caps
-        Lock (e.g. to switch Hebrew/English) kills the process with SIGTRAP.
-        Globe double-tap detection only needs plain key events, so the
-        media-key event type is dropped from the tap mask entirely.
+        1. No NSSystemDefined (media-key) subscription: pynput converts those
+           events via NSEvent.eventWithCGEvent_ on its tap thread; on macOS 26
+           that conversion runs caps-lock/input-source checks that must happen
+           on the main dispatch queue, so pressing Caps Lock (e.g. to switch
+           Hebrew/English) kills the process. Globe double-tap detection only
+           needs plain key events, so the event type is dropped from the mask.
+
+        2. No keycode_context() on the listener thread: pynput's _run() reads
+           the keyboard layout via TIS* calls, which likewise must run on the
+           main dispatch queue. GlobeTapListener.start() precomputes the
+           context on the main thread and injects it via _precomputed_context
+           (a plain (int, bytes) tuple, safe to hand across threads).
         """
         _EVENTS = (
             Quartz.CGEventMaskBit(Quartz.kCGEventKeyDown)
             | Quartz.CGEventMaskBit(Quartz.kCGEventKeyUp)
             | Quartz.CGEventMaskBit(Quartz.kCGEventFlagsChanged)
         )
+
+        _precomputed_context = (None, None)
+
+        def _run(self):
+            self._context = self._precomputed_context
+            try:
+                # Skip keyboard.Listener._run (which enters keycode_context on
+                # this thread) and jump straight to the event-tap loop.
+                super(keyboard.Listener, self)._run()
+            finally:
+                self._context = None
 else:
     _KeyEventsOnlyListener = keyboard.Listener
 
@@ -73,10 +91,16 @@ class GlobeTapListener:
     def start(self) -> None:
         with self._lock:
             self._stop_listener()
-            self._listener = _KeyEventsOnlyListener(
+            listener = _KeyEventsOnlyListener(
                 on_press=self._on_press,
                 suppress=False,
             )
+            # Read the keyboard layout HERE — every start() caller (app
+            # startup, tray resume via the Tk poller) runs on the main
+            # thread, where the TIS calls are safe on macOS 26.
+            with keycode_context() as ctx:
+                listener._precomputed_context = ctx
+            self._listener = listener
             self._listener.start()
             log.info('GlobeTapListener started (Globe vk=%d)', self._GLOBE_VK)
 

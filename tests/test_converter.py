@@ -185,3 +185,13 @@ class TestEdgeCases:
     def test_tab_passes_through(self):
         result = convert('a\tb', 'en_to_he')
         assert '\t' in result
+
+    def test_macos_geresh_converts_to_w(self):
+        # The macOS Hebrew layout types U+05F3 (geresh) on the W key, unlike
+        # the Windows layout which types an ASCII apostrophe.
+        assert convert('׳', 'he_to_en') == 'w'
+        assert convert('׳קךך', 'he_to_en') == 'well'
+
+    def test_macos_geresh_with_custom_keymap(self):
+        # The geresh extra must survive custom keymap overrides
+        assert convert('׳', 'he_to_en', custom_keymap={'e': 'X'}) == 'w'
