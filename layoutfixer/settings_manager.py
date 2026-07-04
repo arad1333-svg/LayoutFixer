@@ -17,7 +17,7 @@ DEFAULTS: dict = {
     'auto_switch_layout': True,
     'start_with_windows': False,
     'show_notifications': True,
-    'theme': 'system',
+    'theme': 'dark',
     'clipboard_delay_ms': 100,
     'debug_log': False,
     'custom_keymap': {},

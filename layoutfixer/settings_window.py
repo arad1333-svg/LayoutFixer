@@ -21,21 +21,29 @@ HOTKEY_OPTIONS = [
     ('Ctrl + Alt + F', 'ctrl+alt+f'),
 ]
 
-# Kinetic Terminal palette
-PRIMARY           = '#8eff71'
-PRIMARY_HOVER     = '#2ff801'
-ON_PRIMARY        = '#064200'
-SURFACE           = '#0e0e0e'
-SURFACE_LOW       = '#131313'
-SURFACE_CONTAINER = '#1a1919'
-SURFACE_HIGH      = '#201f1f'
-SURFACE_BRIGHT    = '#2c2c2c'
-ON_SURFACE        = '#ffffff'
-ON_SURFACE_VAR    = '#adaaaa'
-OUTLINE           = '#777575'
-OUTLINE_VAR       = '#494847'
-ERROR             = '#ff7351'
-ERROR_HOVER       = '#e05a3a'
+# Kinetic Terminal palette — (light-mode, dark-mode) pairs.
+# customtkinter widgets accept these tuples directly and auto-switch with the
+# appearance mode; plain tk widgets (Canvas/Frame/Label) can't, so they must
+# resolve colors through _c() at render time and be re-rendered on theme change.
+PRIMARY           = ('#3da81e', '#8eff71')
+PRIMARY_HOVER     = ('#2f8c13', '#2ff801')
+ON_PRIMARY        = ('#ffffff', '#064200')
+SURFACE           = ('#f4f4f2', '#0e0e0e')
+SURFACE_LOW       = ('#e9e9e6', '#131313')
+SURFACE_CONTAINER = ('#fbfbfa', '#1a1919')
+SURFACE_HIGH      = ('#e3e3e0', '#201f1f')
+SURFACE_BRIGHT    = ('#d5d5d1', '#2c2c2c')
+ON_SURFACE        = ('#171716', '#ffffff')
+ON_SURFACE_VAR    = ('#5f5d5b', '#adaaaa')
+OUTLINE           = ('#8f8d8a', '#777575')
+OUTLINE_VAR       = ('#c6c4c1', '#494847')
+ERROR             = ('#d84315', '#ff7351')
+ERROR_HOVER       = ('#bf360c', '#e05a3a')
+
+
+def _c(pair: tuple[str, str]) -> str:
+    """Resolve a (light, dark) color pair against the current appearance mode."""
+    return pair[0] if ctk.get_appearance_mode() == 'Light' else pair[1]
 
 WIN_W, WIN_H = 500, 560
 
@@ -55,7 +63,7 @@ class AnimatedSwitch(tk.Canvas):
             parent,
             width=self._TRACK_W, height=self._TRACK_H,
             bd=0, highlightthickness=0,
-            bg=SURFACE_CONTAINER, cursor='hand2',
+            bg=_c(SURFACE_CONTAINER), cursor='hand2',
         )
         self._var     = variable
         self._anim_id = None
@@ -98,15 +106,20 @@ class AnimatedSwitch(tk.Canvas):
         else:
             self._anim_id = None
 
+    def refresh_theme(self) -> None:
+        """Re-resolve colors after an appearance-mode change."""
+        self.configure(bg=_c(SURFACE_CONTAINER))
+        self._render(self._current_knob_x)
+
     def _render(self, knob_cx: float):
         self._current_knob_x = knob_cx
         self.delete('all')
         state      = self._var.get()
         tw, th     = self._TRACK_W, self._TRACK_H
         r          = th // 2    # 11 — full pill
-        track_fill = PRIMARY    if state else SURFACE_HIGH
-        knob_fill  = ON_PRIMARY if state else ON_SURFACE_VAR
-        self._pill(0, 0, tw, th, r, fill=track_fill, outline=OUTLINE_VAR)
+        track_fill = _c(PRIMARY)    if state else _c(SURFACE_HIGH)
+        knob_fill  = _c(ON_PRIMARY) if state else _c(ON_SURFACE_VAR)
+        self._pill(0, 0, tw, th, r, fill=track_fill, outline=_c(OUTLINE_VAR))
         kr = self._knob_r
         self.create_oval(
             knob_cx - kr, self._knob_y - kr,
@@ -115,23 +128,21 @@ class AnimatedSwitch(tk.Canvas):
         )
 
     def _pill(self, x1, y1, x2, y2, r, fill, outline):
-        """Filled pill shape with a 1-px border, no seam artifacts."""
-        fk = dict(fill=fill, outline='')
-        self.create_arc(x1,     y1,     x1+2*r, y1+2*r, start= 90, extent=90, style='pieslice', **fk)
-        self.create_arc(x2-2*r, y1,     x2,     y1+2*r, start=  0, extent=90, style='pieslice', **fk)
-        self.create_arc(x1,     y2-2*r, x1+2*r, y2,     start=180, extent=90, style='pieslice', **fk)
-        self.create_arc(x2-2*r, y2-2*r, x2,     y2,     start=270, extent=90, style='pieslice', **fk)
-        self.create_rectangle(x1+r, y1, x2-r, y2, **fk)
-        self.create_rectangle(x1,   y1+r, x2, y2-r, **fk)
+        """Filled pill shape with a 1-px border.
+
+        Built from two half-circle end caps + a center rectangle. Ovals have
+        no straight edges, so there is no pieslice-edge seam through the
+        track (a hairline used to show at the knob position).
+        """
+        fk = dict(fill=fill, outline=fill)
+        self.create_oval(x1,       y1, x1 + 2*r, y2, **fk)
+        self.create_oval(x2 - 2*r, y1, x2,       y2, **fk)
+        self.create_rectangle(x1 + r, y1, x2 - r, y2, **fk)
         bk = dict(outline=outline, fill='')
-        self.create_arc(x1,     y1,     x1+2*r, y1+2*r, start= 90, extent=90, style='arc', **bk)
-        self.create_arc(x2-2*r, y1,     x2,     y1+2*r, start=  0, extent=90, style='arc', **bk)
-        self.create_arc(x1,     y2-2*r, x1+2*r, y2,     start=180, extent=90, style='arc', **bk)
-        self.create_arc(x2-2*r, y2-2*r, x2,     y2,     start=270, extent=90, style='arc', **bk)
-        self.create_line(x1+r, y1,   x2-r, y1,   fill=outline)
-        self.create_line(x1+r, y2,   x2-r, y2,   fill=outline)
-        self.create_line(x1,   y1+r, x1,   y2-r, fill=outline)
-        self.create_line(x2,   y1+r, x2,   y2-r, fill=outline)
+        self.create_arc(x1,       y1, x1 + 2*r, y2, start=90,  extent=180, style='arc', **bk)
+        self.create_arc(x2 - 2*r, y1, x2,       y2, start=270, extent=180, style='arc', **bk)
+        self.create_line(x1 + r, y1, x2 - r, y1, fill=outline)
+        self.create_line(x1 + r, y2, x2 - r, y2, fill=outline)
 
 
 class LedRadioButton(tk.Canvas):
@@ -148,7 +159,7 @@ class LedRadioButton(tk.Canvas):
             parent,
             width=self._SIZE, height=self._SIZE,
             bd=0, highlightthickness=0,
-            bg=SURFACE_CONTAINER, cursor='hand2',
+            bg=_c(SURFACE_CONTAINER), cursor='hand2',
         )
         self._var       = variable
         self._value     = value
@@ -200,13 +211,18 @@ class LedRadioButton(tk.Canvas):
             self._settle_id = None
         self._flashing = False
 
+    def refresh_theme(self) -> None:
+        """Re-resolve colors after an appearance-mode change."""
+        self.configure(bg=_c(SURFACE_CONTAINER))
+        self._render()
+
     def _render(self) -> None:
         self.delete('all')
         selected = self._var.get() == self._value
         s, half  = self._SIZE, self._SIZE / 2
         rw       = self._RING_W
 
-        ring_color = (
+        ring_color = _c(
             (PRIMARY_HOVER if self._flashing else PRIMARY)
             if selected else
             (ON_SURFACE_VAR if self._hovering else OUTLINE_VAR)
@@ -217,7 +233,7 @@ class LedRadioButton(tk.Canvas):
         if selected:
             r = self._DOT_D / 2
             self.create_oval(half - r, half - r, half + r, half + r,
-                             fill=ON_PRIMARY, outline='')
+                             fill=_c(ON_PRIMARY), outline='')
 
 
 class SettingsWindow(ctk.CTkToplevel):
@@ -298,6 +314,8 @@ class SettingsWindow(ctk.CTkToplevel):
 
         # Populate tab contents
         self._save_buttons: list[ctk.CTkButton] = []
+        # Plain-tk widgets that must re-resolve colors on theme change
+        self._theme_refreshers: list = []
         self._build_general_tab(self._tab_frames['General'])
         self._build_hotkey_tab(self._tab_frames['Hotkey'])
         self._build_keymap_tab(self._tab_frames['Key Map'])
@@ -354,17 +372,20 @@ class SettingsWindow(ctk.CTkToplevel):
         ).pack(anchor='w', padx=16, pady=(8, 2))
 
         theme_val = s.get('theme', settings_manager.DEFAULTS['theme'])
-        # Normalise stored value to match OptionMenu display values
-        _theme_map = {'system': 'System', 'dark': 'Dark', 'light': 'Light'}
-        display_theme = _theme_map.get(theme_val.lower(), 'System')
+        # Normalise stored value; 'system' is a legacy value from before the
+        # System option was removed — treat it as Dark (the brand default)
+        _theme_map = {'dark': 'Dark', 'light': 'Light'}
+        display_theme = _theme_map.get(theme_val.lower(), 'Dark')
         self._theme_var = tk.StringVar(value=display_theme)
 
         def _on_theme_change(value):
             ctk.set_appearance_mode(value.lower())
+            for refresh in self._theme_refreshers:
+                refresh()
 
         ctk.CTkOptionMenu(
             parent,
-            values=['System', 'Dark', 'Light'],
+            values=['Dark', 'Light'],
             variable=self._theme_var,
             command=_on_theme_change,
             fg_color=SURFACE_HIGH,
@@ -407,15 +428,21 @@ class SettingsWindow(ctk.CTkToplevel):
                 value=s.get('hotkey', settings_manager.DEFAULTS['hotkey'])
             )
             for label, value in HOTKEY_OPTIONS:
-                row = tk.Frame(parent, bg=SURFACE_CONTAINER, cursor='hand2')
+                row = tk.Frame(parent, bg=_c(SURFACE_CONTAINER), cursor='hand2')
                 row.pack(anchor='w', padx=24, pady=4)
 
                 led = LedRadioButton(row, variable=self._hotkey_var, value=value)
                 led.pack(side='left')
 
-                lbl = tk.Label(row, text=label, bg=SURFACE_CONTAINER, fg=ON_SURFACE,
+                lbl = tk.Label(row, text=label, bg=_c(SURFACE_CONTAINER), fg=_c(ON_SURFACE),
                                font=('Segoe UI', 12), cursor='hand2')
                 lbl.pack(side='left', padx=(8, 0))
+
+                def _refresh_row(row=row, lbl=lbl, led=led):
+                    row.configure(bg=_c(SURFACE_CONTAINER))
+                    lbl.configure(bg=_c(SURFACE_CONTAINER), fg=_c(ON_SURFACE))
+                    led.refresh_theme()
+                self._theme_refreshers.append(_refresh_row)
 
                 lbl.bind('<Button-1>', led._on_click)
                 row.bind('<Button-1>', led._on_click)
@@ -638,6 +665,7 @@ class SettingsWindow(ctk.CTkToplevel):
         ctk.CTkLabel(
             text_frame, text=label,
             font=ctk.CTkFont(family='Segoe UI', size=11, weight='bold'),
+            text_color=ON_SURFACE,
         ).pack(anchor='w')
         if subtitle:
             ctk.CTkLabel(
@@ -646,7 +674,9 @@ class SettingsWindow(ctk.CTkToplevel):
                 text_color=ON_SURFACE_VAR,
             ).pack(anchor='w')
 
-        AnimatedSwitch(frame, variable=var).pack(side='right', pady=1)
+        switch = AnimatedSwitch(frame, variable=var)
+        switch.pack(side='right', pady=1)
+        self._theme_refreshers.append(switch.refresh_theme)
 
 
 # ---------------------------------------------------------------------------

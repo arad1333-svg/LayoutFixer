@@ -70,7 +70,11 @@ Merge `TEST` → `main` → push to `origin/main`.
 The app and website share one design system. Never introduce colors outside this palette.
 
 ```python
-# Color constants (use these names in settings_window.py)
+# Color constants (use these names in settings_window.py).
+# The app supports Dark + Light themes: in settings_window.py each constant
+# is a (light, dark) tuple; the dark values are listed below and remain the
+# canonical brand palette. Plain-tk widgets resolve tuples via _c() and are
+# re-rendered on theme change (see _theme_refreshers).
 PRIMARY          = '#8eff71'   # LED green — all interactive accents
 PRIMARY_HOVER    = '#2ff801'   # Bright green — hover states
 ON_PRIMARY       = '#064200'   # Dark green — text ON green backgrounds
@@ -103,7 +107,8 @@ ERROR_HOVER      = '#e05a3a'   # Destructive hover
 General    → Auto-Switch Layout toggle
              Start with Windows toggle
              Show Notifications toggle
-             Theme selector (System / Dark / Light)
+             Theme selector (Dark / Light — no System option; legacy
+             stored value 'system' is treated as 'dark')
              [Save] button
 
 Hotkey     → Radio buttons: Ctrl+Alt+X / Ctrl+Alt+Z / Ctrl+Alt+F

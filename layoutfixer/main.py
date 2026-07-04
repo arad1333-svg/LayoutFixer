@@ -66,7 +66,9 @@ def main() -> None:
 
     # 4. Set customtkinter appearance
     import customtkinter as ctk
-    theme = settings.get('theme', 'system')
+    theme = settings.get('theme', 'dark')
+    if theme == 'system':
+        theme = 'dark'   # legacy value — the System option was removed
     ctk.set_appearance_mode(theme)
     ctk.set_default_color_theme('blue')
 

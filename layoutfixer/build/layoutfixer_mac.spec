@@ -16,12 +16,14 @@ from pathlib import Path
 
 block_cipher = None
 
+root = Path(SPECPATH).parent  # layoutfixer/  (SPECPATH = build/)
+
 a = Analysis(
-    ['main.py'],
-    pathex=[str(Path(__file__).parent.parent)],  # layoutfixer/
+    [str(root / 'main.py')],
+    pathex=[str(root)],
     binaries=[],
     datas=[
-        ('assets', 'assets'),   # icon.png, icon.icns
+        (str(root / 'assets'), 'assets'),   # icon.png, icon.icns
     ],
     hiddenimports=[
         'pynput.keyboard._darwin',
@@ -68,7 +70,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='assets/icon.icns',
+    icon=str(root / 'assets' / 'icon.icns'),
 )
 
 coll = COLLECT(
@@ -85,7 +87,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='LayoutFixer.app',
-    icon='assets/icon.icns',
+    icon=str(root / 'assets' / 'icon.icns'),
     bundle_identifier='com.layoutfixer.app',
     info_plist={
         'CFBundleName': 'LayoutFixer',
