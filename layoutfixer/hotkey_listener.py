@@ -21,6 +21,28 @@ log = logging.getLogger(__name__)
 # macOS: Globe key double-tap listener
 # ---------------------------------------------------------------------------
 
+if sys.platform == 'darwin':
+    import Quartz
+
+    class _KeyEventsOnlyListener(keyboard.Listener):
+        """keyboard.Listener without the NSSystemDefined (media-key) subscription.
+
+        pynput converts NSSystemDefined events via NSEvent.eventWithCGEvent_ on
+        its tap thread; on macOS 26 that conversion runs caps-lock/input-source
+        checks that must happen on the main dispatch queue, so pressing Caps
+        Lock (e.g. to switch Hebrew/English) kills the process with SIGTRAP.
+        Globe double-tap detection only needs plain key events, so the
+        media-key event type is dropped from the tap mask entirely.
+        """
+        _EVENTS = (
+            Quartz.CGEventMaskBit(Quartz.kCGEventKeyDown)
+            | Quartz.CGEventMaskBit(Quartz.kCGEventKeyUp)
+            | Quartz.CGEventMaskBit(Quartz.kCGEventFlagsChanged)
+        )
+else:
+    _KeyEventsOnlyListener = keyboard.Listener
+
+
 class GlobeTapListener:
     """
     Detects double-tap of the Globe key (🌐) on macOS and runs a callback.
@@ -36,12 +58,11 @@ class GlobeTapListener:
     Note: requires Accessibility permission so pynput can receive key events
     from other applications.
 
-    PHASE 1: confirm _GLOBE_VK on your hardware with tools/detect_globe_key.py
     """
 
     _DOUBLE_TAP_MS = 350
-    # Globe key virtual keycode on Apple keyboards — verify with detect_globe_key.py
-    _GLOBE_VK = 63
+    # Globe key virtual keycode on Apple keyboards — confirmed via detect_globe_key.py
+    _GLOBE_VK = 179
 
     def __init__(self, callback: Callable[[], None]) -> None:
         self._callback = callback
@@ -52,7 +73,7 @@ class GlobeTapListener:
     def start(self) -> None:
         with self._lock:
             self._stop_listener()
-            self._listener = keyboard.Listener(
+            self._listener = _KeyEventsOnlyListener(
                 on_press=self._on_press,
                 suppress=False,
             )

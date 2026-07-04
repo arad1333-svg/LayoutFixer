@@ -297,12 +297,19 @@ class SettingsWindow(ctk.CTkToplevel):
             self._tab_frames[name] = frame
 
         # Populate tab contents
+        self._save_buttons: list[ctk.CTkButton] = []
         self._build_general_tab(self._tab_frames['General'])
         self._build_hotkey_tab(self._tab_frames['Hotkey'])
         self._build_keymap_tab(self._tab_frames['Key Map'])
 
         # Show first tab
         self._switch_tab('General')
+
+        # Save-button UX: snapshot the just-loaded values, then watch every
+        # input so the Save buttons only light up when something differs.
+        self._saved_values = self._current_values()
+        self._watch_inputs()
+        self._refresh_save_buttons()
 
     def _switch_tab(self, name: str) -> None:
         """Activate a tab: update button/indicator styling and swap visible frame."""
@@ -369,12 +376,7 @@ class SettingsWindow(ctk.CTkToplevel):
         self._sep(parent)
 
         # Save button
-        ctk.CTkButton(
-            parent, text='Save',
-            fg_color=PRIMARY, hover_color=PRIMARY_HOVER, text_color=ON_PRIMARY,
-            font=ctk.CTkFont(family='Segoe UI', size=13, weight='bold'),
-            command=self._save,
-        ).pack(pady=(8, 16))
+        self._add_save_button(parent)
 
     # ------------------------------------------------------------------
     # Tab 2 — Hotkey
@@ -423,12 +425,7 @@ class SettingsWindow(ctk.CTkToplevel):
 
         self._sep(parent)
 
-        ctk.CTkButton(
-            parent, text='Save',
-            fg_color=PRIMARY, hover_color=PRIMARY_HOVER, text_color=ON_PRIMARY,
-            font=ctk.CTkFont(family='Segoe UI', size=13, weight='bold'),
-            command=self._save,
-        ).pack(pady=(8, 16))
+        self._add_save_button(parent)
 
     # ------------------------------------------------------------------
     # Tab 3 — Key Map
@@ -499,12 +496,59 @@ class SettingsWindow(ctk.CTkToplevel):
         for en_key, entry in self._keymap_entries:
             entry.delete(0, 'end')
             entry.insert(0, EN_TO_HE.get(en_key, ''))
+        # delete/insert don't fire <KeyRelease>, so refresh explicitly
+        self._refresh_save_buttons()
+
+    # ------------------------------------------------------------------
+    # Unsaved-change tracking (Save button UX)
+    # ------------------------------------------------------------------
+
+    def _current_values(self) -> dict:
+        """Snapshot of every user-editable input, for unsaved-change detection."""
+        return {
+            'auto_switch': self._auto_switch_var.get(),
+            'start_windows': self._start_windows_var.get(),
+            'notifications': self._notifications_var.get(),
+            'theme': self._theme_var.get(),
+            'hotkey': self._hotkey_var.get(),
+            'keymap': tuple(entry.get() for _key, entry in self._keymap_entries),
+        }
+
+    def _is_dirty(self) -> bool:
+        return self._current_values() != self._saved_values
+
+    def _watch_inputs(self) -> None:
+        for var in (self._auto_switch_var, self._start_windows_var,
+                    self._notifications_var, self._theme_var, self._hotkey_var):
+            var.trace_add('write', self._on_input_changed)
+        for _key, entry in self._keymap_entries:
+            entry.bind('<KeyRelease>', self._on_input_changed)
+
+    def _on_input_changed(self, *_) -> None:
+        self._refresh_save_buttons()
+
+    def _refresh_save_buttons(self) -> None:
+        if self._is_dirty():
+            for btn in self._save_buttons:
+                btn.configure(fg_color=PRIMARY, hover_color=PRIMARY_HOVER,
+                              text_color=ON_PRIMARY)
+        else:
+            for btn in self._save_buttons:
+                btn.configure(fg_color=SURFACE_HIGH, hover_color=SURFACE_HIGH,
+                              text_color=ON_SURFACE_VAR)
+
+    def _mark_saved(self) -> None:
+        self._saved_values = self._current_values()
+        self._refresh_save_buttons()
 
     # ------------------------------------------------------------------
     # Save / Reset
     # ------------------------------------------------------------------
 
     def _save(self):
+        if not self._is_dirty():
+            return  # nothing to save — inactive button is a no-op
+
         s = self._settings
 
         # General tab
@@ -544,10 +588,12 @@ class SettingsWindow(ctk.CTkToplevel):
                 s['hotkey'] = old_hotkey
                 settings_manager.save(s)
                 self._hotkey_var.set(old_hotkey)
+                self._mark_saved()
                 self._show_error('Could not register that hotkey — your previous hotkey has been restored.')
                 return
 
-        self.destroy()
+        # Window stays open; buttons grey out until the next change
+        self._mark_saved()
 
     def _reset_all(self):
         self._settings = settings_manager.reset()
@@ -568,6 +614,16 @@ class SettingsWindow(ctk.CTkToplevel):
         )
         banner.place(relx=0.5, rely=0.97, anchor='s', relwidth=0.95)
         self.after(4000, banner.destroy)
+
+    def _add_save_button(self, parent) -> None:
+        btn = ctk.CTkButton(
+            parent, text='Save',
+            fg_color=PRIMARY, hover_color=PRIMARY_HOVER, text_color=ON_PRIMARY,
+            font=ctk.CTkFont(family='Segoe UI', size=13, weight='bold'),
+            command=self._save,
+        )
+        btn.pack(pady=(8, 16))
+        self._save_buttons.append(btn)
 
     def _sep(self, parent):
         ctk.CTkFrame(parent, height=1, fg_color=OUTLINE_VAR).pack(fill='x', padx=16, pady=8)

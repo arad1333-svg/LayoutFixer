@@ -109,19 +109,31 @@ def main() -> None:
         listener.stop()
         import tray_app
         if tray_app._tray_icon:
-            tray_app._tray_icon.stop()
+            if sys.platform == 'darwin':
+                tray_app._tray_icon.visible = False
+            else:
+                tray_app._tray_icon.stop()
         __main__._tk_root.quit()
 
-    # 9. Run tray in a background thread (it blocks until stopped)
+    # 9. Start the system tray icon
     import tray_app
 
-    tray_thread = threading.Thread(
-        target=tray_app.run_tray,
-        args=(listener, settings, on_open_settings, on_quit),
-        daemon=True,
-        name='tray',
-    )
-    tray_thread.start()
+    if sys.platform == 'darwin':
+        # macOS: tkinter's mainloop() (started below) drives the shared
+        # NSApplication event loop, which also dispatches tray icon clicks —
+        # so the icon is created on the main thread with no separate thread
+        # or event loop of its own.
+        tray_app.create_tray(listener, settings, on_open_settings, on_quit)
+    else:
+        # Windows: pystray runs its own blocking event loop on a background
+        # thread.
+        tray_thread = threading.Thread(
+            target=tray_app.run_tray,
+            args=(listener, settings, on_open_settings, on_quit),
+            daemon=True,
+            name='tray',
+        )
+        tray_thread.start()
 
     # 10. Run Tk event loop on the main thread (required by tkinter)
     try:

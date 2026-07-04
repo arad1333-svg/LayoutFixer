@@ -115,6 +115,17 @@ Key Map    → Scrollable EN→HE remapping table
 
 No "Advanced" tab. The clipboard delay and debug log settings are gone from the UI (they exist in `settings_manager.DEFAULTS` but have no controls — intentional).
 
+### Save Button UX (pending — implement after Step 6 testing passes, before Step 9 build)
+
+The [Save] button on each tab must reflect whether there is anything to save:
+- **Unsaved changes present**: button is fully active (normal PRIMARY green style).
+- **No unsaved changes** (on open, or immediately after saving): button is visually
+  inactive — faded/greyed out (use `state="disabled"` or a muted `fg_color`). It should
+  still be clickable if the user tries, but do nothing (or save idempotently).
+- After clicking Save: do NOT close the window. Just return the button to the inactive
+  (no-changes) state.
+- Track changed state per tab: switching tabs should not reset the dirty flag for other tabs.
+
 ---
 
 ### Project Quick Reference
