@@ -222,15 +222,22 @@
       </p>
 
       <div class="flex flex-col items-center gap-3">
-        <a href="https://github.com/arad1333-svg/LayoutFixer/releases/latest"
+        <a id="hero-download" href="https://github.com/arad1333-svg/LayoutFixer/releases/latest"
            target="_blank" rel="noopener"
            class="bg-gradient-to-br from-primary to-primary-container text-on-primary-fixed font-label font-extrabold text-lg uppercase tracking-tight px-10 py-5 rounded-md kinetic-glow hover:scale-105 transition-all active:scale-95">
-          Download for Windows — Free
+          <span id="hero-download-label">Download for Windows — Free</span>
         </a>
         <div class="flex items-center gap-2 font-label text-sm tracking-widest uppercase text-on-surface-variant">
           <span class="w-2 h-2 rounded-full bg-primary led-indicator"></span>
-          v1.0.0 stable build &nbsp;·&nbsp; No admin required &nbsp;·&nbsp; 14 MB
+          v1.2.0 stable build &nbsp;·&nbsp; No admin required &nbsp;·&nbsp; Free
         </div>
+        <a id="hero-alt-download" href="https://github.com/arad1333-svg/LayoutFixer/releases/latest"
+           target="_blank" rel="noopener"
+           class="mt-2 font-label text-xs font-bold tracking-widest uppercase text-on-surface
+                  border border-outline-variant rounded-md px-5 py-2.5
+                  hover:border-primary hover:text-primary transition-colors">
+          Also available for macOS →
+        </a>
       </div>
     </div>
 
@@ -338,11 +345,11 @@
         <div class="p-10 bg-surface border-l-4 border-primary/20 hover:border-primary transition-colors duration-200 group">
           <div class="font-headline text-6xl font-black text-surface-container-highest mb-6
                       group-hover:text-primary/10 transition-colors duration-200">02</div>
-          <h3 class="font-headline text-2xl font-bold uppercase mb-4">
+          <h3 id="step2-heading" class="font-headline text-2xl font-bold uppercase mb-4">
             Press <span class="text-primary">Ctrl+Alt+X</span>
           </h3>
           <p class="text-on-surface-variant leading-relaxed">
-            LayoutFixer intercepts the hotkey, converts the characters, and pastes the fixed text back instantly.
+            LayoutFixer intercepts the trigger, converts the characters, and pastes the fixed text back instantly.
           </p>
         </div>
 
@@ -382,7 +389,7 @@
           <div>
             <h4 class="font-headline font-bold uppercase tracking-tight mb-2">Works in any app</h4>
             <p class="text-sm text-on-surface-variant leading-relaxed">
-              Browser, Word, Slack, Notepad, your IDE — if Windows sees it, LayoutFixer works in it.
+              Browser, Word, Slack, your IDE — on Windows and macOS alike, if you can type in it, LayoutFixer fixes it.
             </p>
           </div>
         </div>
@@ -406,7 +413,7 @@
           <div>
             <h4 class="font-headline font-bold uppercase tracking-tight mb-2">Silent tray app</h4>
             <p class="text-sm text-on-surface-variant leading-relaxed">
-              Runs quietly in the system tray. Right-click for settings. Never gets in your way.
+              Runs quietly in the system tray — the menu bar on macOS. One click for settings. Never gets in your way.
             </p>
           </div>
         </div>
@@ -442,14 +449,14 @@
         Stop re-typing.<br>Start fixing.
       </h2>
 
-      <a href="https://github.com/arad1333-svg/LayoutFixer/releases/latest"
+      <a id="cta-download" href="https://github.com/arad1333-svg/LayoutFixer/releases/latest"
          target="_blank" rel="noopener"
          class="group relative inline-block px-12 py-5 border-2 border-primary rounded-md overflow-hidden
                 font-headline font-black text-xl uppercase tracking-tighter text-primary
                 hover:text-on-primary-fixed transition-colors duration-300">
         <!-- Fill layer slides up on hover -->
         <span class="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300 -z-0"></span>
-        <span class="relative z-10">Download Executable</span>
+        <span class="relative z-10" id="cta-download-label">Download for Windows</span>
       </a>
 
     </div>
@@ -486,6 +493,46 @@
 
   </div>
 </footer>
+
+<!-- ── Platform-aware download buttons ── -->
+<script>
+(function () {
+  // iPads report "MacIntel" too — exclude touch devices
+  var isMac = /Mac/.test(navigator.platform) && navigator.maxTouchPoints < 2;
+
+  var heroLabel = document.getElementById('hero-download-label');
+  var altLink   = document.getElementById('hero-alt-download');
+  var ctaLabel  = document.getElementById('cta-download-label');
+  var step2     = document.getElementById('step2-heading');
+
+  if (isMac) {
+    heroLabel.textContent = 'Download for Mac — Free';
+    altLink.textContent = 'Also available for Windows →';
+    ctaLabel.textContent = 'Download for Mac';
+    step2.innerHTML = 'Double-tap <span class="text-primary">Globe 🌐</span>';
+  }
+
+  // Point the buttons directly at the right installer from the latest
+  // release. If the lookup fails, they keep the releases-page link.
+  fetch('https://api.github.com/repos/arad1333-svg/LayoutFixer/releases/latest')
+    .then(function (r) { return r.json(); })
+    .then(function (rel) {
+      var dmg = null, exe = null;
+      (rel.assets || []).forEach(function (a) {
+        if (a.name.slice(-4) === '.dmg') dmg = a.browser_download_url;
+        if (a.name.slice(-4) === '.exe') exe = a.browser_download_url;
+      });
+      var mine  = isMac ? dmg : exe;
+      var other = isMac ? exe : dmg;
+      if (mine) {
+        document.getElementById('hero-download').href = mine;
+        document.getElementById('cta-download').href = mine;
+      }
+      if (other) altLink.href = other;
+    })
+    .catch(function () { /* keep fallback links */ });
+})();
+</script>
 
 </body>
 </html>
