@@ -92,8 +92,8 @@ app = BUNDLE(
     info_plist={
         'CFBundleName': 'LayoutFixer',
         'CFBundleDisplayName': 'LayoutFixer',
-        'CFBundleVersion': '1.2.0',
-        'CFBundleShortVersionString': '1.2.0',
+        'CFBundleVersion': '1.2.1',
+        'CFBundleShortVersionString': '1.2.1',
         'NSHighResolutionCapable': True,
         # Hide from Dock — menu bar app only
         'LSUIElement': True,

@@ -15,7 +15,7 @@ APP_NAME = 'LayoutFixer'
 DEFAULTS: dict = {
     'hotkey': 'ctrl+alt+x',
     'auto_switch_layout': True,
-    'start_with_windows': False,
+    'start_with_windows': True,
     'show_notifications': True,
     'theme': 'dark',
     'clipboard_delay_ms': 100,

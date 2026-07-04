@@ -229,7 +229,7 @@
         </a>
         <div class="flex items-center gap-2 font-label text-sm tracking-widest uppercase text-on-surface-variant">
           <span class="w-2 h-2 rounded-full bg-primary led-indicator"></span>
-          v1.2.0 stable build &nbsp;·&nbsp; No admin required &nbsp;·&nbsp; Free
+          <span id="hero-version">v1.2.1</span> stable build &nbsp;·&nbsp; No admin required &nbsp;·&nbsp; Free
         </div>
         <a id="hero-alt-download" href="https://github.com/arad1333-svg/LayoutFixer/releases/latest"
            target="_blank" rel="noopener"
@@ -517,6 +517,9 @@
   fetch('https://api.github.com/repos/arad1333-svg/LayoutFixer/releases/latest')
     .then(function (r) { return r.json(); })
     .then(function (rel) {
+      if (rel.tag_name) {
+        document.getElementById('hero-version').textContent = rel.tag_name;
+      }
       var dmg = null, exe = null;
       (rel.assets || []).forEach(function (a) {
         if (a.name.slice(-4) === '.dmg') dmg = a.browser_download_url;

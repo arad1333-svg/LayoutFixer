@@ -168,7 +168,23 @@ def _show_about(icon, item):
 # ---------------------------------------------------------------------------
 
 def show_notification(message: str) -> None:
-    """Show a Windows tray balloon notification."""
+    """Show a system notification.
+
+    Windows: pystray tray balloon. macOS: pystray has no notification
+    support, so use osascript's `display notification` instead.
+    """
+    if sys.platform == 'darwin':
+        try:
+            import subprocess
+            safe = message.replace('\\', '\\\\').replace('"', '\\"')
+            subprocess.Popen([
+                'osascript', '-e',
+                f'display notification "{safe}" with title "LayoutFixer"',
+            ])
+        except Exception:
+            log.debug('Failed to show macOS notification', exc_info=True)
+        return
+
     global _tray_icon
     if _tray_icon is not None:
         try:
@@ -191,11 +207,18 @@ def _create_icon(listener, settings: dict, on_settings: callable, on_quit: calla
         menu=menu,
     )
 
-    # Show first-run notification in a brief delay
+    # Show a "running" notification shortly after startup (platform-specific
+    # trigger wording), unless the user disabled notifications
     def _welcome():
         import time
         time.sleep(1.5)
-        show_notification('LayoutFixer is running. Select text and press the hotkey to convert it.')
+        if not settings.get('show_notifications', True):
+            return
+        if sys.platform == 'darwin':
+            show_notification('LayoutFixer is running in the menu bar. '
+                              'Select gibberish text and double-tap the Globe key to fix it.')
+        else:
+            show_notification('LayoutFixer is running. Select text and press the hotkey to convert it.')
 
     threading.Thread(target=_welcome, daemon=True).start()
 

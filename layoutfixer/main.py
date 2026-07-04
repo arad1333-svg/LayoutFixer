@@ -64,6 +64,18 @@ def main() -> None:
     log = logging.getLogger(__name__)
     log.info('LayoutFixer starting')
 
+    # 3b. Materialize the start-at-login setting (ships ON by default): only
+    # in the packaged app — a dev run would register the bare Python
+    # interpreter as a login item.
+    if getattr(sys, 'frozen', False) and settings.get('start_with_windows', True):
+        try:
+            import autostart
+            if not autostart.is_enabled():
+                autostart.enable()
+                log.info('Start-at-login enabled (default)')
+        except Exception:
+            log.warning('Could not enable start-at-login', exc_info=True)
+
     # 4. Set customtkinter appearance
     import customtkinter as ctk
     theme = settings.get('theme', 'dark')
