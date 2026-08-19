@@ -54,9 +54,10 @@ After user approval, dispatch the CTO Agent with a precise implementation brief 
 #### Step 6 — Verification
 Always run tests after implementation:
 ```bash
-cd layoutfixer && py -m pytest ../tests/ -v
+cd layoutfixer && py -m pytest ../tests/ -v      # Windows
+cd layoutfixer && python3 -m pytest ../tests/ -v # macOS
 ```
-Confirm 102/102 pass. Check for leftover old color values or patterns.
+Confirm 104/104 pass. Check for leftover old color values or patterns.
 
 #### Step 7 — Commit & Push
 Stage only source files (not build artifacts, not `.claude/`, not `SESSION_*.md`).
@@ -135,20 +136,31 @@ The [Save] button on each tab must reflect whether there is anything to save:
 
 ### Project Quick Reference
 
-**Run:** `cd layoutfixer && py main.py`
-**Test:** `cd layoutfixer && py -m pytest ../tests/ -v` (expect 102/102)
-**Build exe:** `cd layoutfixer && py -m pyinstaller build/layoutfixer.spec --clean --noconfirm`
-**Build installer:** run Inno Setup on `layoutfixer/build/installer.iss`
+Windows commands use `py`, macOS commands use `python3`.
+
+**Run:** `cd layoutfixer && py main.py` (Windows) · `python3 main.py` (macOS)
+**Test:** `cd layoutfixer && py -m pytest ../tests/ -v` (expect 104/104)
+**Build exe (Windows):** `cd layoutfixer && py -m pyinstaller build/layoutfixer.spec --clean --noconfirm`
+**Build installer (Windows):** run Inno Setup on `layoutfixer/build/installer.iss`
+**Build .app (macOS):** `cd layoutfixer && python3 -m PyInstaller build/layoutfixer_mac.spec --clean --noconfirm`
+**Build .dmg (macOS):** `cd layoutfixer && dmgbuild -s build/dmgbuild_settings.py "LayoutFixer" dist/LayoutFixer.dmg`
 **Preview server:** `cd preview && py -m http.server 5500`
 
 **Key files:**
 - `layoutfixer/settings_window.py` — settings UI (customtkinter)
 - `layoutfixer/settings_manager.py` — load/save `%APPDATA%/LayoutFixer/settings.json`
-- `layoutfixer/hotkey_listener.py` — pynput GlobalHotKeys wrapper
+- `layoutfixer/hotkey_listener.py` — Windows: pynput GlobalHotKeys · macOS: Globe double-tap listener
 - `layoutfixer/clipboard_handler.py` — full conversion pipeline
-- `layoutfixer/converter.py` — Hebrew↔English character map
-- `layoutfixer/tray_app.py` — pystray tray icon + menu
-- `docs/index.html` — landing page (GitHub Pages, live on push to main)
+- `layoutfixer/converter.py` — Hebrew↔English character map (+ macOS geresh extra)
+- `layoutfixer/tray_app.py` — pystray tray icon + menu (+ macOS main-thread callback queue)
+- `layoutfixer/permission_gate.py` — macOS first-run Accessibility gate (polls until granted)
+- `layoutfixer/plat/layout_mac.py` — macOS input-source switching (ctypes TIS, main-thread marshalled)
+- `docs/index.html` — landing page (GitHub Pages, live on push to main; platform-aware download buttons)
 - `preview/settings_preview.html` — HTML design preview (not shipped)
+
+**macOS hard rule (macOS 26 kills the process otherwise):** TIS*/TSM input-source
+calls and `NSEvent.eventWithCGEvent_` must only run on the main thread. Marshal via
+`layout_mac._run_on_main_thread()` / `tray_app._tk_schedule()`; see
+`hotkey_listener._KeyEventsOnlyListener` for the pynput workarounds.
 
 **Branch convention:** work on `TEST`, merge to `main`, push `origin/main`.
